@@ -4,6 +4,26 @@
 
 Powered by **LangChain**, **LangGraph**, and **LangSmith**, Nexus provides a persistent, stateful coding assistant with advanced capabilities like human-in-the-loop approvals, full observability, and the **Model Context Protocol (MCP)** for extensible tooling.
 
+<div align="center">
+  <h3>⚡ Project Showcase ⚡</h3>
+  <img src="assets/images/Screenshot 2026-01-24 211901.png" width="100%" alt="Nexus Hero">
+  <br><br>
+  <table>
+    <tr>
+      <td align="center"><img src="assets/images/Screenshot 2026-01-24 210940.png" width="400" alt="Architect Mode"></td>
+      <td align="center"><img src="assets/images/Screenshot 2026-01-24 211722.png" width="400" alt="Code Mode"></td>
+    </tr>
+    <tr>
+      <td align="center"><img src="assets/images/Screenshot 2026-01-24 211827.png" width="400" alt="Ask Mode"></td>
+      <td align="center"><img src="assets/images/Screenshot 2026-01-24 211835.png" width="400" alt="Metrics"></td>
+    </tr>
+     <tr>
+      <td align="center"><img src="assets/images/Screenshot 2026-01-24 211912.png" width="400" alt="Tool Execution"></td>
+      <td align="center"><img src="assets/images/Screenshot 2026-01-24 211923.png" width="400" alt="Exit Screen"></td>
+    </tr>
+  </table>
+</div>
+
 ## ✨ Features
 
 - 🔄 **Stateful Conversations** - Persistent conversation history with SQLite checkpointing.
@@ -68,11 +88,13 @@ Nexus is built on a robust stack:
 4. **Configure environment:**
 
    Copy the example environment file:
+
    ```bash
    cp .env.example .env
    ```
 
    Edit `.env` with your keys:
+
    ```env
    OPENAI_API_KEY=sk-...
    LANGSMITH_API_KEY=ls__...  # Optional
@@ -118,7 +140,6 @@ Nexus supports three operational modes to provide structure and safety during co
 | **ASK** | MCP Tools | None | Conversation-only mode for questions and research. |
 
 Nexus defaults to **CODE** mode. When a restricted action is attempted, Nexus will intelligently suggest a mode switch. The agent can also programmatically request a mode change via the `switch_mode` tool when it recognizes a shift in task requirements.
-
 
 ## 💻 Usage
 

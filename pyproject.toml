@@ -1,0 +1,87 @@
+[project]
+name = "nexus"
+version = "0.1.0"
+description = "Nexus Is A CLI-Based AI Coding Agent That Transforms Natural Language Into Efficient, Production-Ready Code!"
+readme = "readme.md"
+requires-python = ">=3.14.2"
+authors = [
+    { name = "Rohit Vilas Ingole", email = "rohit.vilas.ingole@gmail.com" },
+]
+license = { file = "license" }
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+urls = { Homepage = "https://github.com/datarohit/nexus" }
+dependencies = ["pydantic==2.12.5", "pydantic-settings==2.12.0"]
+
+[project.optional-dependencies]
+dev = ["isort==7.0.0", "ruff==0.14.14", "ty==0.0.13"]
+
+[build-system]
+requires = ["setuptools>=80.10.1", "wheel>=0.46.3"]
+
+[project.scripts]
+nexus = "nexus.main:run"
+
+[tool.setuptools]
+packages = ["nexus"]
+
+[tool.ruff]
+target-version = "py314"
+line-length = 120
+
+[tool.ruff.lint]
+select = [
+    "F",
+    "E",
+    "W",
+    "C90",
+    "I",
+    "N",
+    "UP",
+    "YTT",
+    "ASYNC",
+    "S",
+    "BLE",
+    "FBT",
+    "B",
+    "A",
+    "COM",
+    "C4",
+    "DTZ",
+    "T10",
+    "DJ",
+    "EM",
+    "EXE",
+    "FA",
+    'ISC',
+    "ICN",
+    "G",
+    'INP',
+    'PIE',
+    "T20",
+    'PYI',
+    'PT',
+    "Q",
+    "RSE",
+    "RET",
+    "SLF",
+    "SLOT",
+    "SIM",
+    "TID",
+    "TC",
+    "INT",
+    "PTH",
+    "ERA",
+    "PD",
+    "PGH",
+    "PL",
+    "TRY",
+    "FLY",
+    "PERF",
+    "RUF",
+]
+ignore = []
+extend-unsafe-fixes = []

@@ -44,7 +44,7 @@ async def execute_shell_command(
         )
 
         output: list[str] = []
-        max_output: int = 2000  # Cap output per stream
+        max_output: int = 2048
 
         if result.stdout:
             stdout: str = result.stdout

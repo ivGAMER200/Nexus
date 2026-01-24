@@ -30,6 +30,7 @@ class Settings(BaseSettings):
         langsmith_project: str - LangSmith project name.
         langsmith_tracing: bool - Enable LangSmith tracing.
         working_directory: Path - Working directory.
+        nexus_dir: Path - Nexus configuration directory.
         max_iterations: int - Maximum iterations.
         approval_required: bool - Require approval for tool execution.
         checkpoint_db: str - Checkpoint database path.
@@ -57,10 +58,11 @@ class Settings(BaseSettings):
     langsmith_tracing: bool = True
 
     working_directory: Path = Field(default_factory=Path.cwd)
+    nexus_dir: Path = Field(default=Path(".nexus"))
     max_iterations: int = 50
     approval_required: bool = True
 
-    checkpoint_db: str = "nexus_checkpoints.db"
+    checkpoint_db: str = "checkpoints.db"
 
     log_level: str = "INFO"
     debug: bool = False
@@ -79,9 +81,17 @@ class Settings(BaseSettings):
         Raises:
             None
         """
+
         super().__init__(**data)
+
+        if not self.nexus_dir.is_absolute():
+            self.nexus_dir = self.working_directory / self.nexus_dir
+
+        db_dir = self.nexus_dir / "db"
+        db_dir.mkdir(parents=True, exist_ok=True)
+
         if not self.checkpoint_db.startswith(("file:", "sqlite:", "/")):
-            db_path = self.working_directory / self.checkpoint_db
+            db_path = db_dir / self.checkpoint_db
             object.__setattr__(self, "checkpoint_db", str(db_path))
 
     def configure_langsmith(self) -> None:

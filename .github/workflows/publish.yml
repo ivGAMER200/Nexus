@@ -3,6 +3,8 @@ name: Publish Python Package
 on:
     release:
         types: [published]
+    push:
+        branches: [master]
 
 jobs:
     build-and-publish:
@@ -29,9 +31,15 @@ jobs:
 
             - name: Build Package
               run: |
-                  echo "GitHub Release Tag: ${{ github.event.release.tag_name }}"
+                  TAG_NAME="${{ github.event.release.tag_name }}"
+                  if [ -z "$TAG_NAME" ]; then
+                      echo "No release tag found. Generating dev version."
+                      VERSION="0.0.1.dev${{ github.run_number }}"
+                  else
+                      echo "GitHub Release Tag: $TAG_NAME"
+                      VERSION=$(echo "$TAG_NAME" | sed 's/^v//')
+                  fi
 
-                  VERSION=$(echo "${{ github.event.release.tag_name }}" | sed 's/^v//')
                   echo "Building Version: $VERSION"
 
                   export SETUPTOOLS_SCM_PRETEND_VERSION=$VERSION

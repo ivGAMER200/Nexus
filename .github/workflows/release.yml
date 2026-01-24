@@ -1,0 +1,52 @@
+name: Release
+
+on:
+    push:
+        tags:
+            - "v*"
+
+jobs:
+    release:
+        runs-on: ubuntu-latest
+
+        steps:
+            - uses: actions/checkout@v3
+              with:
+                  fetch-depth: 0
+
+            - name: Set Up Python
+              uses: actions/setup-python@v4
+              with:
+                  python-version: "3.14"
+
+            - name: Install Dependencies
+              run: |
+                  python -m pip install --upgrade pip
+                  python -m pip install setuptools wheel setuptools_scm>=6.2
+                  python -m pip install -e ".[dev]"
+                  python -m pip install build
+
+            - name: Build Package
+              run: |
+                  echo "GitHub Ref: $GITHUB_REF"
+                  echo "GitHub Ref Name: $GITHUB_REF_NAME"
+
+                  VERSION=$(echo $GITHUB_REF_NAME | sed 's/^v//')
+                  echo "Building Version: $VERSION"
+
+                  export SETUPTOOLS_SCM_PRETEND_VERSION=$VERSION
+
+                  python -m build --no-isolation
+
+                  echo "Built Packages In Dist/"
+                  ls -la dist/
+
+            - name: Create GitHub Release
+              uses: softprops/action-gh-release@v1
+              with:
+                  files: |
+                      dist/*.tar.gz
+                      dist/*.whl
+                  generate_release_notes: true
+              env:
+                  GITHUB_TOKEN: ${{ secrets.NEXUS_REPO_TOKEN }}

@@ -1,0 +1,44 @@
+name: Publish Python Package
+
+on:
+    release:
+        types: [published]
+
+jobs:
+    build-and-publish:
+        runs-on: ubuntu-latest
+
+        permissions:
+            contents: read
+            id-token: write
+
+        steps:
+            - uses: actions/checkout@v3
+              with:
+                  fetch-depth: 0
+
+            - name: Set Up Python
+              uses: actions/setup-python@v4
+              with:
+                  python-version: "3.14"
+
+            - name: Install Build
+              run: |
+                  pip install setuptools wheel setuptools_scm>=6.2
+                  pip install build
+
+            - name: Build Package
+              run: |
+                  echo "GitHub Release Tag: ${{ github.event.release.tag_name }}"
+
+                  VERSION=$(echo "${{ github.event.release.tag_name }}" | sed 's/^v//')
+                  echo "Building Version: $VERSION"
+
+                  export SETUPTOOLS_SCM_PRETEND_VERSION=$VERSION
+
+                  python -m build --no-isolation
+
+                  ls -la dist/
+
+            - name: Publish Package To PyPI
+              uses: pypa/gh-action-pypi-publish@release/v1

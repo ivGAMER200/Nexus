@@ -26,7 +26,7 @@ jobs:
 
             - name: Install Build
               run: |
-                  pip install setuptools wheel setuptools_scm>=6.2
+                  pip install setuptools wheel setuptools_scm==9.2.2
                   pip install build
 
             - name: Build Package
@@ -34,7 +34,7 @@ jobs:
                   TAG_NAME="${{ github.event.release.tag_name }}"
                   if [ -z "$TAG_NAME" ]; then
                       echo "No release tag found. Generating dev version."
-                      VERSION="0.0.1.dev${{ github.run_number }}"
+                      VERSION="0.1.1.dev${{ github.run_number }}"
                   else
                       echo "GitHub Release Tag: $TAG_NAME"
                       VERSION=$(echo "$TAG_NAME" | sed 's/^v//')

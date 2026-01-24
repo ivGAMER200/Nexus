@@ -1,26 +1,23 @@
-import asyncio
+"""Nexus Main Entry Point.
 
+Nexus is a CLI-based AI coding agent powered by LangChain and LangGraph.
+"""
 
-async def run_async() -> None:
-    """Async Entry Point.
+import warnings
 
-    Provides the primary asynchronous execution logic for the application.
+warnings.filterwarnings(
+    "ignore",
+    message="Core Pydantic V1 functionality isn't compatible with Python 3.14 or greater",
+    category=UserWarning,
+)
 
-    Args:
-        None
-
-    Returns:
-        None
-
-    Raises:
-        None
-    """
+from nexus.ui.cli import cli  # noqa: E402
 
 
 def run() -> None:
-    """Sync Execution Wrapper.
+    """Run Nexus.
 
-    Wraps the asynchronous entry point for synchronous execution environments.
+    Main entry point for Nexus CLI.
 
     Args:
         None
@@ -32,7 +29,7 @@ def run() -> None:
         None
     """
 
-    asyncio.run(run_async())
+    cli()
 
 
 if __name__ == "__main__":

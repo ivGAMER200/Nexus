@@ -1,0 +1,77 @@
+"""Graph Module.
+
+LangGraph state machine for the agent.
+"""
+
+from collections.abc import Callable
+from typing import Any
+
+from langchain_openai import ChatOpenAI
+from langgraph.graph import END, StateGraph
+from langgraph.prebuilt import ToolNode
+
+from nexus.agent.nodes import approval_node, create_agent_node, should_continue
+from nexus.agent.state import AgentState
+from nexus.config.settings import settings
+from nexus.tools import all_tools
+
+
+async def create_agent_graph(checkpointer: Any | None = None) -> Any:
+    """Create Agent Graph.
+
+    Create the Compiled LangGraph agent.
+
+    Args:
+        checkpointer: Any | None - LangGraph checkpointer.
+
+    Returns:
+        any - Compiled agent graph.
+
+    Raises:
+        None
+    """
+
+    llm: ChatOpenAI = ChatOpenAI(
+        model=settings.model_name,  # ty:ignore[unknown-argument]
+        temperature=settings.temperature,
+        api_key=settings.openai_api_key,  # ty:ignore[unknown-argument]
+        base_url=settings.openai_base_url,  # ty:ignore[unknown-argument]
+    )
+
+    tools: list = all_tools
+
+    agent_node: Callable = create_agent_node(llm, tools)
+    tool_node: ToolNode = ToolNode(tools)
+
+    workflow: StateGraph = StateGraph(AgentState)  # ty:ignore[invalid-argument-type]
+
+    workflow.add_node("agent", agent_node)
+    workflow.add_node("tools", tool_node)
+
+    if settings.approval_required:
+        workflow.add_node("approval", approval_node)
+
+    workflow.set_entry_point("agent")
+
+    workflow.add_conditional_edges(
+        "agent",
+        should_continue,
+        {
+            "continue": "tools",
+            "request_approval": "approval" if settings.approval_required else "tools",
+            "end": END,
+        },
+    )
+
+    workflow.add_edge("tools", "agent")
+
+    if settings.approval_required:
+        workflow.add_conditional_edges(
+            "approval",
+            lambda state: "tools" if state.get("approval_granted") else END,
+        )
+
+    return workflow.compile(checkpointer=checkpointer)
+
+
+__all__: list[str] = ["create_agent_graph"]

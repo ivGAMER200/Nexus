@@ -5,9 +5,11 @@ Implementation of core slash commands.
 
 from rich.align import Align
 from rich.panel import Panel
+from rich.rule import Rule
 from rich.table import Table, box
 from rich.text import Text
 
+from nexus.agent.metrics import MetricsManager
 from nexus.commands.registry import CommandRegistry
 from nexus.config.settings import settings
 from nexus.tools.mcp import _active_mcp_tools_info, get_mcp_status
@@ -303,6 +305,83 @@ class ModeCommand:
             console.print("[red]Error: Could not update agent mode in this context.[/red]")
 
 
+class MetricsCommand:
+    """Metrics Command Class.
+
+    Shows aggregate metrics for current session.
+
+    Inherits:
+        None
+
+    Attrs:
+        name: str - Command name.
+        description: str - Command description.
+
+    Methods:
+        execute(args, context): Execute metrics command.
+    """
+
+    name = "metrics"
+    description = "Show aggregate session metrics"
+
+    async def execute(self, args: list[str], context: dict | None = None) -> None:
+        """Execute metrics command.
+
+        Args:
+            args: list[str] - Command arguments.
+            context: dict | None - Optional execution context.
+
+        Returns:
+            None
+
+        Raises:
+            None
+        """
+
+        if not context or "metrics_manager" not in context or "thread_id" not in context:
+            console.print("[red]Error: Metrics context not available.[/red]")
+            return
+
+        metrics_manager: MetricsManager = context["metrics_manager"]
+        thread_id: str = context["thread_id"]
+
+        summary = metrics_manager.get_session_summary(thread_id)
+        if not summary or not summary.get("total_requests"):
+            console.print("[yellow]No metrics available for this session yet.[/yellow]")
+            return
+
+        table = Table(
+            title=f"[bold cyan]Aggregate Metrics: {thread_id}[/bold cyan]",
+            show_header=True,
+            header_style="bold white",
+            border_style="cyan",
+            box=box.ROUNDED,
+        )
+
+        table.add_column("Metric", style="dim")
+        table.add_column("Value", style="white")
+
+        table.add_row("Total Requests", str(summary["total_requests"]))
+        table.add_row("Total Latency", f"{summary['total_latency']:.2f}s")
+        table.add_row("Avg Latency", f"{summary['avg_latency']:.2f}s")
+
+        ttft = summary.get("avg_ttft")
+        if ttft is not None:
+            table.add_row("Avg TTFT", f"{ttft:.2f}s")
+
+        table.add_row(Rule(style="dim"), Rule(style="dim"))
+        table.add_row("Total Input Tokens", str(summary["total_input_tokens"]))
+        table.add_row("Total Output Tokens", str(summary["total_output_tokens"]))
+        table.add_row("Total Tokens", str(summary["total_tokens"]))
+
+        cached = summary.get("total_cached_tokens", 0)
+        if cached > 0:
+            table.add_row("Total Cached Tokens", str(cached))
+
+        console.print(table)
+        console.print()
+
+
 def register_core_commands() -> None:
     """Register core commands.
 
@@ -321,3 +400,4 @@ def register_core_commands() -> None:
     CommandRegistry.register(ConfigCommand())
     CommandRegistry.register(MCPsCommand())
     CommandRegistry.register(ModeCommand())
+    CommandRegistry.register(MetricsCommand())

@@ -253,16 +253,16 @@ def _print_session_info(thread_id: str, mode: str = "CODE", *, stream: bool) -> 
 def cli(ctx: click.Context) -> None:
     """Nexus CLI.
 
-    🤖 **Nexus - AI Coding Agent**
+    Primary command group for AI Coding Agent.
 
-    A modern, production-ready AI coding assistant powered by LangChain and LangGraph.
+    Args:
+        ctx: click.Context - Call context instance.
 
-    **Main Features:**
-    - 🔄 Stateful conversations with checkpointing
-    - 🛠️ Powerful file and shell tools
-    - 👤 Human-in-the-loop approvals
-    - 📊 Full observability with LangSmith
-    - 🎨 Beautiful terminal UI
+    Returns:
+        None
+
+    Raises:
+        None
     """
 
     register_core_commands()
@@ -302,9 +302,9 @@ def chat(message: str | None, thread_id: str, *, stream: bool) -> None:
     Start interactive chat session.
 
     Args:
-        message: str | None - Initial message to process.
-        thread_id: str - Conversation thread identifier.
-        stream: bool - Enable real-time response streaming.
+        message: str | None - Initial message content.
+        thread_id: str - Thread identity string.
+        stream: bool - Response streaming flag.
 
     Returns:
         None
@@ -377,14 +377,14 @@ async def _interactive_chat_loop(
 ) -> None:
     """Interactive Chat Loop.
 
-    Manage interactive session input and output.
+    Manage terminal chat session.
 
     Args:
-        agent: Any - Agent instance.
-        config: dict - Configuration dictionary.
-        metrics_manager: MetricsManager - Performance metrics manager.
+        agent: Any - Agent graph instance.
+        config: dict - Execution configuration dictionary.
+        metrics_manager: MetricsManager - Session metrics manager.
         thread_id: str - Thread identifier.
-        stream: bool - Streaming status.
+        stream: bool - Token streaming flag.
 
     Returns:
         None
@@ -425,17 +425,41 @@ async def _interactive_chat_loop(
                 continue
 
             async def get_current_state() -> dict:
-                """Fetch current agent state."""
+                """Fetch current agent state.
+
+                Args:
+                    None
+
+                Returns:
+                    dict - Current agent state values.
+
+                Raises:
+                    None
+                """
+
                 st = await agent.aget_state(config)
                 return st.values if st.values else {}
 
             async def update_state(new_values: dict) -> None:
-                """Update agent state values."""
+                """Update agent state values.
+
+                Args:
+                    new_values: dict - New state values to merge.
+
+                Returns:
+                    None
+
+                Raises:
+                    None
+                """
+
                 await agent.aupdate_state(config, new_values, as_node="agent")
 
             context = {
                 "get_state": get_current_state,
                 "update_state": update_state,
+                "metrics_manager": metrics_manager,
+                "thread_id": thread_id,
             }
 
             if message.startswith("/") and await CommandRegistry.execute(message, context=context):
@@ -665,17 +689,17 @@ async def _handle_streaming_response(
 ) -> tuple[float | None, dict]:
     """Handle Streaming Response.
 
-    Process streaming events and render live output.
+    Render AI output chunks.
 
     Args:
-        agent: Any - Agent instance.
-        input_state: dict - Input state dictionary.
-        config: dict - Configuration mapping.
-        mode: str - Current mode identifier.
-        start_time: float - Start timestamp.
+        agent: Any - Agent graph instance.
+        input_state: dict - State dictionary.
+        config: dict - Runtime configuration context.
+        mode: str - Current operation mode.
+        start_time: float - Execution start timestamp.
 
     Returns:
-        tuple[float | None, dict] - TTFT and usage dictionary.
+        tuple[float | None, dict] - TTFT and usage metadata.
 
     Raises:
         None
@@ -716,16 +740,16 @@ async def _handle_streaming_response(
 async def _handle_static_response(agent: Any, input_state: dict, config: dict, mode: str) -> dict:
     """Handle Static Response.
 
-    Process synchronous response and render panel.
+    Invoke AI and show final output.
 
     Args:
-        agent: Any - Agent instance.
-        input_state: dict - Input state dictionary.
-        config: dict - Configuration mapping.
-        mode: str - Current mode identifier.
+        agent: Any - Agent graph instance.
+        input_state: dict - State dictionary.
+        config: dict - Runtime configuration context.
+        mode: str - Current operation mode.
 
     Returns:
-        dict - Usage metadata dictionary.
+        dict - Token usage metadata.
 
     Raises:
         None
@@ -769,16 +793,16 @@ async def _process_message(  # noqa: PLR0913
 ) -> None:
     """Process Message.
 
-    Execute single message processing and track metrics.
+    Process user input and record metrics.
 
     Args:
-        agent: Any - Agent instance.
-        message: str - User message.
-        config: dict - Configuration mapping.
-        stream: bool - Streaming enabled status.
-        metrics_manager: MetricsManager - Performance tracking manager.
+        agent: Any - Agent graph instance.
+        message: str - User input content.
+        config: dict - Runtime configuration context.
+        stream: bool - Response streaming flag.
+        metrics_manager: MetricsManager - Statistics tracking manager.
         thread_id: str - Thread identifier.
-        mode: str - Agent operational mode.
+        mode: str - Operational mode identifier.
 
     Returns:
         None

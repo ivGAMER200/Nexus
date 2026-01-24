@@ -257,7 +257,7 @@ ruff check .
 
 ## 📄 License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+This project is licensed under the MIT License - see the [LICENSE](https://github.com/DataRohit/Nexus/blob/master/LICENSE) file for details.
 
 ## 🙏 Acknowledgments
 

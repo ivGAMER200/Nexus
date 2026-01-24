@@ -31,6 +31,7 @@ Powered by **LangChain**, **LangGraph**, and **LangSmith**, Nexus provides a per
 - 🛠️ **Powerful Built-in Tools** - File operations, shell commands, and code analysis.
 - 👤 **Human-in-the-Loop** - Secure approval workflows (`y/n/d`) for tool execution.
 - 🛡️ **Operational Modes** - Security-focused CODE, ARCHITECT, and ASK modes.
+- 📉 **Real-time Metrics** - Track taken usage, latency, and cost per request.
 - 📉 **Intelligent Guidance** - Context-aware mode switch suggestions and agent-initiated transitions.
 
 - 🚀 **Production-Ready** - Built with modern best practices, type safety, and structured logging.
@@ -159,7 +160,7 @@ While in chat mode, you can use the following slash commands:
 - `/help` - Show all available commands.
 - `/mode <name>` - Switch between `code`, `architect`, and `ask`.
 - `/config` - View configuration and the active operational mode.
-
+- `/metrics` - View session usage statistics.
 - `/mcps` - List active MCP servers and their tools.
 - `/about` - Show application information.
 
@@ -206,15 +207,20 @@ nexus/
 │   │   ├── nodes.py    # Agent reasoning & approval nodes
 │   │   ├── state.py    # State schema
 │   │   ├── modes.py    # Mode definitions & configs
+│   │   ├── metrics.py  # Usage tracking & analytics
 │   │   ├── restrictions.py # Tool restriction logic
 │   │   └── approval.py # Interactive approval workflow
+│   │
+│   ├── commands/       # Modular Slash Commands
+│   │   ├── base.py     # Command base class
+│   │   ├── core.py     # Core command implementations
+│   │   └── registry.py # Command registry
 │   │
 │   ├── tools/          # Tool definitions
 │   │   ├── mcp.py      # MCP client & configuration handler
 │   │   ├── file_ops.py # Built-in file tools
 │   │   ├── shell.py    # Built-in shell tools
 │   │   └── mode.py     # Mode management tools
-
 │   │
 │   ├── config/         # Configuration
 │   │   ├── settings.py # Pydantic settings

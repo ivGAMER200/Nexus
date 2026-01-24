@@ -6,20 +6,20 @@ Powered by **LangChain**, **LangGraph**, and **LangSmith**, Nexus provides a per
 
 <div align="center">
   <h3>⚡ Project Showcase ⚡</h3>
-  <img src="assets/images/Screenshot 2026-01-24 211901.png" width="100%" alt="Nexus Hero">
+  <img src="assets/images/Screenshot 2026-01-24 210940.png" width="100%" alt="Nexus Hero">
   <br><br>
   <table>
     <tr>
-      <td align="center"><img src="assets/images/Screenshot 2026-01-24 210940.png" width="400" alt="Architect Mode"></td>
-      <td align="center"><img src="assets/images/Screenshot 2026-01-24 211722.png" width="400" alt="Code Mode"></td>
+      <td align="center"><img src="assets/images/Screenshot 2026-01-24 211722.png" width="400" alt="Showcase 2"></td>
+      <td align="center"><img src="assets/images/Screenshot 2026-01-24 211827.png" width="400" alt="Showcase 3"></td>
     </tr>
     <tr>
-      <td align="center"><img src="assets/images/Screenshot 2026-01-24 211827.png" width="400" alt="Ask Mode"></td>
-      <td align="center"><img src="assets/images/Screenshot 2026-01-24 211835.png" width="400" alt="Metrics"></td>
+      <td align="center"><img src="assets/images/Screenshot 2026-01-24 211835.png" width="400" alt="Showcase 4"></td>
+      <td align="center"><img src="assets/images/Screenshot 2026-01-24 211901.png" width="400" alt="Showcase 5"></td>
     </tr>
      <tr>
-      <td align="center"><img src="assets/images/Screenshot 2026-01-24 211912.png" width="400" alt="Tool Execution"></td>
-      <td align="center"><img src="assets/images/Screenshot 2026-01-24 211923.png" width="400" alt="Exit Screen"></td>
+      <td align="center"><img src="assets/images/Screenshot 2026-01-24 211912.png" width="400" alt="Showcase 6"></td>
+      <td align="center"><img src="assets/images/Screenshot 2026-01-24 211923.png" width="400" alt="Showcase 7"></td>
     </tr>
   </table>
 </div>

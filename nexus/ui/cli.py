@@ -20,6 +20,7 @@ from rich.text import Text
 from nexus.agent.graph import create_agent_graph
 from nexus.config.prompts import get_config_status
 from nexus.config.settings import settings
+from nexus.tools.mcp import get_mcp_status
 from nexus.ui.console import console
 
 click.rich_click.USE_RICH_MARKUP = True
@@ -76,7 +77,6 @@ def _print_session_info(thread_id: str, *, stream: bool) -> None:
         None
     """
 
-    # 1. Main Session Info
     session_table = Table.grid(padding=(0, 2))
     session_table.add_column(style="dim", justify="right")
     session_table.add_column(style="cyan")
@@ -92,12 +92,10 @@ def _print_session_info(thread_id: str, *, stream: bool) -> None:
         width=60,
     )
 
-    # Config Status
     status = get_config_status()
     prompts_loaded = status["prompts"]["loaded"]
     rules_loaded = status["rules"]["loaded"]
 
-    # 2. Prompts Panel
     prompts_table = Table(box=box.SIMPLE_HEAD, show_edge=False, padding=(0, 1), expand=True)
     prompts_table.add_column("File", style="cyan")
     prompts_table.add_column("Lines", justify="right", style="dim")
@@ -115,7 +113,6 @@ def _print_session_info(thread_id: str, *, stream: bool) -> None:
         width=60,
     )
 
-    # 3. Rules Panel
     rules_table = Table(box=box.SIMPLE_HEAD, show_edge=False, padding=(0, 1), expand=True)
     rules_table.add_column("File", style="cyan")
     rules_table.add_column("Lines", justify="right", style="dim")
@@ -133,8 +130,6 @@ def _print_session_info(thread_id: str, *, stream: bool) -> None:
         width=60,
     )
 
-    # Render Layout
-    # Stack panels vertically, centered
     console.print(Align.center(session_panel))
 
     if prompts_loaded > 0:
@@ -142,6 +137,31 @@ def _print_session_info(thread_id: str, *, stream: bool) -> None:
 
     if rules_loaded > 0:
         console.print(Align.center(rules_panel))
+
+    mcp_status = get_mcp_status()
+    mcp_loaded = mcp_status["loaded"]
+
+    mcp_table = Table(box=box.SIMPLE_HEAD, show_edge=False, padding=(0, 1), expand=True)
+    mcp_table.add_column("Server", style="cyan")
+    mcp_table.add_column("Command", justify="right", style="dim")
+
+    if mcp_loaded > 0:
+        for s in mcp_status["servers"]:
+            cmd_preview = s["command"].split("\\")[-1]
+            tool_count = s.get("tools", 0)
+            mcp_table.add_row(s["name"], f"{cmd_preview} [dim]({tool_count} tools)[/dim]")
+    else:
+        mcp_table.add_row("[dim]No active MCP servers[/dim]", "")
+
+    mcp_panel = Panel(
+        mcp_table,
+        title=f"[bold cyan]MCP Servers ({mcp_loaded})[/bold cyan]",
+        border_style="cyan",
+        width=60,
+    )
+
+    if mcp_loaded > 0:
+        console.print(Align.center(mcp_panel))
 
     console.print()
 
@@ -218,47 +238,52 @@ async def _chat(message: str | None, thread_id: str, *, stream: bool) -> None:
     print_banner()
 
     async with AsyncSqliteSaver.from_conn_string(settings.checkpoint_db) as checkpointer:
-        with console.status("[bold cyan]Initializing agent...[/bold cyan]", spinner="dots"):
-            agent: Any = await create_agent_graph(checkpointer=checkpointer)
+        status = console.status("[bold cyan]Initializing agent...[/bold cyan]", spinner="dots")
+        status.start()
+        try:
+            async with create_agent_graph(checkpointer=checkpointer) as agent:
+                status.stop()
+                config: dict = {"configurable": {"thread_id": thread_id}}
 
-        config: dict = {"configurable": {"thread_id": thread_id}}
+                _print_session_info(thread_id, stream=stream)
 
-        _print_session_info(thread_id, stream=stream)
+                if message is None:
+                    console.print(
+                        Align.center(
+                            Panel(
+                                "[dim]Type your message and press Enter\n"
+                                "Commands: [yellow]exit[/yellow], [yellow]quit[/yellow], "
+                                "[yellow]q[/yellow] to exit[/dim]",
+                                border_style="dim",
+                                width=60,
+                            ),
+                        ),
+                    )
+                    console.print()
 
-        if message is None:
-            console.print(
-                Align.center(
-                    Panel(
-                        "[dim]Type your message and press Enter\n"
-                        "Commands: [yellow]exit[/yellow], [yellow]quit[/yellow], [yellow]q[/yellow] to exit[/dim]",
-                        border_style="dim",
-                        width=60,
-                    ),
-                ),
-            )
-            console.print()
+                    while True:
+                        try:
+                            console.print(Align.center(Rule(style="dim"), width=60))
+                            message = console.input("\n[bold green]>[/bold green] ")
 
-            while True:
-                try:
-                    console.print(Align.center(Rule(style="dim"), width=60))
-                    message = console.input("\n[bold green]>[/bold green] ")
+                            if message.lower() in ["exit", "quit", "q"]:
+                                console.print("\n[dim]Goodbye! 👋[/dim]\n")
+                                break
 
-                    if message.lower() in ["exit", "quit", "q"]:
-                        console.print("\n[dim]Goodbye! 👋[/dim]\n")
-                        break
+                            if not message.strip():
+                                continue
 
-                    if not message.strip():
-                        continue
+                            await _process_message(agent, message, config, stream=stream)
 
+                        except KeyboardInterrupt:
+                            console.print("\n\n[dim]Use 'exit' to quit[/dim]")
+                        except EOFError:
+                            console.print("\n[dim]Goodbye! 👋[/dim]\n")
+                            break
+                else:
                     await _process_message(agent, message, config, stream=stream)
-
-                except KeyboardInterrupt:
-                    console.print("\n\n[dim]Use 'exit' to quit[/dim]")
-                except EOFError:
-                    console.print("\n[dim]Goodbye! 👋[/dim]\n")
-                    break
-        else:
-            await _process_message(agent, message, config, stream=stream)
+        finally:
+            status.stop()
 
 
 async def _process_message(agent: Any, message: str, config: dict, *, stream: bool) -> None:

@@ -67,6 +67,16 @@ class Settings(BaseSettings):
     log_level: str = "INFO"
     debug: bool = False
 
+    @property
+    def mcp_config_path(self) -> Path:
+        """Get MCP configuration file path.
+
+        Returns:
+            Path - Path to mcp_config.json
+        """
+
+        return self.nexus_dir / "mcp_config.json"
+
     def __init__(self, **data: Any) -> None:
         """Initialize Settings.
 

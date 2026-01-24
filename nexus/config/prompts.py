@@ -43,7 +43,6 @@ def _load_rules() -> str:
         return ""
 
     rules_content: list[str] = []
-    # Read all .md files
     for rule_file in rules_dir.glob("*.md"):
         try:
             content = rule_file.read_text(encoding="utf-8")
@@ -63,12 +62,12 @@ def get_config_status() -> dict[str, Any]:
     Returns:
         dict[str, Any] - Status details including loaded prompts and rules.
     """
+
     status: dict[str, Any] = {
         "prompts": {"loaded": 0, "files": []},
         "rules": {"loaded": 0, "files": []},
     }
 
-    # Check prompts
     prompts_dir: Path = settings.nexus_dir / "prompts"
     if prompts_dir.exists():
         for p in prompts_dir.glob("*.md"):
@@ -79,7 +78,6 @@ def get_config_status() -> dict[str, Any]:
             except OSError:
                 continue
 
-    # Check rules
     rules_dir: Path = settings.nexus_dir / "rules"
     if rules_dir.exists():
         for r in rules_dir.glob("*.md"):

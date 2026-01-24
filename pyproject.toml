@@ -1,7 +1,7 @@
 [project]
 name = "agent-nexus-cli"
 version = "0.1.2"
-description = "Nexus Is A CLI-Based AI Coding Agent That Transforms Natural Language Into Efficient, Production-Ready Code!"
+description = "Nexus is an autonomous CLI coding agent powered by LangGraph and MCP. It plans complex tasks, persists context via SQLite, and securely orchestrates tools. Features specialized Architect/Code modes, real-time metrics, and human-in-the-loop safety for production workflows."
 readme = "readme.md"
 requires-python = ">=3.14.2"
 authors = [

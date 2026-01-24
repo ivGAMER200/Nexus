@@ -1,6 +1,6 @@
 # Nexus - AI Coding Agent
 
-**Nexus is a modern, CLI-based AI coding agent that transforms natural language into efficient, production-ready code.**
+**Nexus is an autonomous CLI coding agent powered by LangGraph and MCP. It plans complex tasks, persists context via SQLite, and securely orchestrates tools. Features specialized Architect/Code modes, real-time metrics, and human-in-the-loop safety for production workflows.**
 
 Powered by **LangChain**, **LangGraph**, and **LangSmith**, Nexus provides a persistent, stateful coding assistant with advanced capabilities like human-in-the-loop approvals, full observability, and the **Model Context Protocol (MCP)** for extensible tooling.
 

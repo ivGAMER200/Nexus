@@ -820,6 +820,10 @@ async def _handle_streaming_response(
             elif kind == "on_tool_end":
                 console.print("[dim]└─ ✓ Completed[/dim]\n")
                 live.start()
+            elif kind == "on_chain_start" and event["name"] == "approval":
+                live.stop()
+            elif kind == "on_chain_end" and event["name"] == "approval":
+                live.start()
 
     console.print()
     return ttft, usage

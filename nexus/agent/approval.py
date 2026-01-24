@@ -5,15 +5,14 @@ User approval workflow for tool execution.
 
 import json
 
-from rich.console import Console
 from rich.panel import Panel
 from rich.prompt import Prompt
 from rich.syntax import Syntax
 
+from nexus.ui.console import console
+
 MAX_TRUNCATION_LENGTH: int = 200
 MAX_SUMMARY_PARAMS: int = 2
-
-console: Console = Console()
 
 
 async def request_tool_approval(

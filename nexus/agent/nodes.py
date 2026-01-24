@@ -8,7 +8,6 @@ from typing import Any
 
 from langchain_core.messages import AIMessage, SystemMessage
 from langchain_openai import ChatOpenAI
-from rich.console import Console
 from rich.prompt import Confirm
 
 from nexus.agent.approval import request_tool_approval
@@ -21,6 +20,7 @@ from nexus.agent.restrictions import (
 from nexus.agent.state import AgentState
 from nexus.config.prompts import SYSTEM_PROMPT
 from nexus.config.settings import settings
+from nexus.ui.console import console
 
 
 def create_agent_node(
@@ -172,8 +172,6 @@ async def approval_node(state: AgentState) -> AgentState:
     Raises:
         None
     """
-
-    console: Console = Console()
 
     messages: list = state.get("messages", [])
     if not messages:

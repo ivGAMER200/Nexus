@@ -14,10 +14,11 @@ from rich.markdown import Markdown
 from rich.panel import Panel
 from rich.progress import Progress, SpinnerColumn, TextColumn
 from rich.rule import Rule
-from rich.table import Table
+from rich.table import Table, box
 from rich.text import Text
 
 from nexus.agent.graph import create_agent_graph
+from nexus.config.prompts import get_config_status
 from nexus.config.settings import settings
 from nexus.ui.console import console
 
@@ -59,6 +60,90 @@ def print_banner() -> None:
     )
 
     console.print(Align.center(banner_panel))
+
+
+def _print_session_info(thread_id: str, *, stream: bool) -> None:
+    """Print Session Info.
+
+    Args:
+        thread_id: str - Thread ID.
+        stream: bool - Streaming enabled.
+
+    Returns:
+        None
+
+    Raises:
+        None
+    """
+
+    # 1. Main Session Info
+    session_table = Table.grid(padding=(0, 2))
+    session_table.add_column(style="dim", justify="right")
+    session_table.add_column(style="cyan")
+    session_table.add_row("Model", settings.model_name)
+    session_table.add_row("Thread", thread_id)
+    session_table.add_row("Working Dir", str(settings.working_directory))
+    session_table.add_row("Streaming", "Enabled" if stream else "Disabled")
+
+    session_panel = Panel(
+        session_table,
+        title="[bold cyan]Session[/bold cyan]",
+        border_style="cyan",
+        width=60,
+    )
+
+    # Config Status
+    status = get_config_status()
+    prompts_loaded = status["prompts"]["loaded"]
+    rules_loaded = status["rules"]["loaded"]
+
+    # 2. Prompts Panel
+    prompts_table = Table(box=box.SIMPLE_HEAD, show_edge=False, padding=(0, 1), expand=True)
+    prompts_table.add_column("File", style="cyan")
+    prompts_table.add_column("Lines", justify="right", style="dim")
+
+    if prompts_loaded > 0:
+        for p in status["prompts"]["files"]:
+            prompts_table.add_row(p["name"], f"{p['lines']}")
+    else:
+        prompts_table.add_row("[dim]No valid prompts found[/dim]", "")
+
+    prompts_panel = Panel(
+        prompts_table,
+        title=f"[bold cyan]Custom Prompts ({prompts_loaded})[/bold cyan]",
+        border_style="cyan",
+        width=60,
+    )
+
+    # 3. Rules Panel
+    rules_table = Table(box=box.SIMPLE_HEAD, show_edge=False, padding=(0, 1), expand=True)
+    rules_table.add_column("File", style="cyan")
+    rules_table.add_column("Lines", justify="right", style="dim")
+
+    if rules_loaded > 0:
+        for r in status["rules"]["files"]:
+            rules_table.add_row(r["name"], f"{r['lines']}")
+    else:
+        rules_table.add_row("[dim]No valid rules found[/dim]", "")
+
+    rules_panel = Panel(
+        rules_table,
+        title=f"[bold cyan]Loaded Rules ({rules_loaded})[/bold cyan]",
+        border_style="cyan",
+        width=60,
+    )
+
+    # Render Layout
+    # Stack panels vertically, centered
+    console.print(Align.center(session_panel))
+
+    if prompts_loaded > 0:
+        console.print(Align.center(prompts_panel))
+
+    if rules_loaded > 0:
+        console.print(Align.center(rules_panel))
+
+    console.print()
 
 
 @click.group(invoke_without_command=True)
@@ -138,25 +223,7 @@ async def _chat(message: str | None, thread_id: str, *, stream: bool) -> None:
 
         config: dict = {"configurable": {"thread_id": thread_id}}
 
-        info_table = Table.grid(padding=(0, 2))
-        info_table.add_column(style="dim", justify="right")
-        info_table.add_column(style="cyan")
-        info_table.add_row("Model", settings.model_name)
-        info_table.add_row("Thread", thread_id)
-        info_table.add_row("Working Dir", str(settings.working_directory))
-        info_table.add_row("Streaming", "Enabled" if stream else "Disabled")
-
-        info_panel = Align.center(
-            Panel(
-                info_table,
-                title="[bold cyan]Session Info[/bold cyan]",
-                border_style="cyan",
-                padding=(1, 2),
-                width=60,
-            ),
-        )
-        console.print(info_panel)
-        console.print()
+        _print_session_info(thread_id, stream=stream)
 
         if message is None:
             console.print(

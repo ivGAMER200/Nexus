@@ -90,6 +90,9 @@ class Settings(BaseSettings):
         db_dir = self.nexus_dir / "db"
         db_dir.mkdir(parents=True, exist_ok=True)
 
+        rules_dir = self.nexus_dir / "rules"
+        rules_dir.mkdir(parents=True, exist_ok=True)
+
         if not self.checkpoint_db.startswith(("file:", "sqlite:", "/")):
             db_path = db_dir / self.checkpoint_db
             object.__setattr__(self, "checkpoint_db", str(db_path))

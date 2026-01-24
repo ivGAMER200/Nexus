@@ -1,168 +1,154 @@
 # Nexus - AI Coding Agent
 
-**Nexus is a CLI-based AI coding agent that transforms natural language into efficient, production-ready code!**
+**Nexus is a modern, CLI-based AI coding agent that transforms natural language into efficient, production-ready code.**
 
-Powered by LangChain, LangGraph, and LangSmith, Nexus provides a modern, production-ready AI coding assistant with advanced features like stateful conversations, human-in-the-loop approvals, and full observability.
+Powered by **LangChain**, **LangGraph**, and **LangSmith**, Nexus provides a persistent, stateful coding assistant with advanced capabilities like human-in-the-loop approvals, full observability, and the **Model Context Protocol (MCP)** for extensible tooling.
 
 ## ✨ Features
 
-- 🔄 **Stateful Conversations** - Persistent conversation history with checkpointing
-- 🛠️ **Powerful Tools** - File operations, shell commands, and more
-- 👤 **Human-in-the-Loop** - Approval workflows for sensitive operations
-- 📊 **Full Observability** - Complete tracing with LangSmith
-- 🎨 **Beautiful UI** - Rich terminal interface with streaming responses
-- 🔌 **Extensible** - Easy to add new tools and capabilities
-- 🚀 **Production-Ready** - Built with modern best practices
+- 🔄 **Stateful Conversations** - Persistent conversation history with SQLite checkpointing.
+- 🔌 **Model Context Protocol (MCP)** - Connect external tools using the open standard MCP.
+- 🛠️ **Powerful Built-in Tools** - File operations, shell commands, and code analysis.
+- 👤 **Human-in-the-Loop** - Secure approval workflows for tool execution.
+- 📊 **Full Observability** - Complete tracing and debugging with LangSmith.
+- 🎨 **Beautiful CLI** - Rich terminal interface with real-time streaming and status panels.
+- 🚀 **Production-Ready** - Built with modern best practices, type safety, and structured logging.
 
 ## 🏗️ Architecture
 
-Nexus is built using:
+Nexus is built on a robust stack:
 
-- **LangChain** - LLM orchestration and tool integration
-- **LangGraph** - State machine for agent workflows
-- **LangSmith** - Observability and tracing
-- **Rich-Click** - Beautiful CLI interface
-- **Pydantic** - Type-safe configuration
-- **SQLite** - Persistent checkpointing
+- **LangChain** - Orchestration and tool integration.
+- **LangGraph** - State machine for reliable agent workflows.
+- **LangSmith** - Observability, tracing, and evaluation.
+- **MCP (Model Context Protocol)** - Standardized connection to external data and tools.
+- **Rich-Click** - Modern, beautiful CLI interface.
+- **Pydantic** - Strict configuration and validation.
+- **SQLite** - Local persistence for conversation threads.
 
 ## 📋 Prerequisites
 
-- Python 3.14.2 or higher
+- Python 3.10+
 - OpenAI API key
-- Optional: LangSmith API key for tracing
+- (Optional) LangSmith API key for tracing
+- (Optional) Docker/Node.js for specific MCP servers
 
 ## 🚀 Installation
 
 1. **Clone the repository:**
 
-```bash
-git clone https://github.com/datarohit/nexus.git
-cd nexus
-```
+   ```bash
+   git clone https://github.com/datarohit/nexus.git
+   cd nexus
+   ```
 
 2. **Create and activate virtual environment:**
 
-```bash
-# Using uv (recommended)
-uv venv
-source .venv/Scripts/activate  # Git Bash on Windows
-
-# Or using standard venv
-python -m venv .venv
-source .venv/Scripts/activate
-```
+   ```bash
+   # Using uv (recommended)
+   uv venv
+   source .venv/Scripts/activate  # Windows (Git Bash)
+   
+   # Or using standard venv
+   python -m venv .venv
+   source .venv/Scripts/activate
+   ```
 
 3. **Install dependencies:**
 
-```bash
-# Using uv (fastest)
-uv pip install -e .
+   ```bash
+   # Using uv (fastest)
+   uv pip install -e .
+   
+   # Or using pip
+   pip install -e .
+   ```
 
-# Or using pip
-pip install -e .
+4. **Configure environment:**
+
+   Copy the example environment file:
+   ```bash
+   cp .env.example .env
+   ```
+
+   Edit `.env` with your keys:
+   ```env
+   OPENAI_API_KEY=sk-...
+   LANGSMITH_API_KEY=ls__...  # Optional
+   LANGSMITH_PROJECT=nexus
+   LANGSMITH_TRACING=true
+   ```
+
+## 🔌 Model Context Protocol (MCP)
+
+Nexus supports the Model Context Protocol, allowing you to easily extend its capabilities with external servers.
+
+### Configuration
+
+Create or edit `.nexus/mcp_config.json` in your project root to define servers.
+
+**Example Configuration:**
+
+```json
+{
+  "mcpServers": {
+    "context7": {
+      "command": "npx",
+      "args": ["-y", "@upstash/context7-mcp"]
+    },
+    "filesystem": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-filesystem", "C:/Projects"]
+    }
+  }
+}
 ```
 
-4. **Configure environment variables:**
-
-Create a `.env` file in the project root:
-
-```bash
-cp .env.example .env
-```
-
-Edit `.env` and add your API keys:
-
-```env
-OPENAI_API_KEY=sk-...
-LANGSMITH_API_KEY=ls__...  # Optional
-LANGSMITH_PROJECT=nexus
-LANGSMITH_TRACING=true
-```
+Nexus automatically loads these servers, counts their tools, and injects their descriptions into the agent's system prompt so it knows exactly how to use them.
 
 ## 💻 Usage
 
 ### Interactive Chat
 
-Start an interactive chat session:
+Start the agent in interactive mode:
 
 ```bash
 nexus chat
 ```
 
-### Single Message
+You will see a dashboard showing the active session, loaded prompts, rules, and connected MCP servers.
 
-Send a single message:
+### Command Line Mode
+
+Send a single instruction without entering interactive mode:
 
 ```bash
-nexus chat "List all Python files in the current directory"
+nexus chat "Refactor main.py to use async/await"
 ```
 
 ### Thread Management
 
-Continue a previous conversation:
+Maintain context across sessions using thread IDs:
 
 ```bash
-nexus chat --thread-id my-project "What did we discuss earlier?"
+nexus chat --thread-id feature-auth "Add login endpoint"
+nexus chat --thread-id feature-auth "Now add logout"
 ```
 
 ### View History
 
-View conversation history for a thread:
+Review past conversations:
 
 ```bash
-nexus history --thread-id my-project
+nexus history --thread-id feature-auth
 ```
 
-### Configuration
+### Configuration Check
 
-View current configuration:
+Verify your settings and loaded components:
 
 ```bash
 nexus config
-```
-
-### Streaming
-
-Enable or disable streaming responses:
-
-```bash
-# With streaming (default)
-nexus chat "Generate a Python function"
-
-# Without streaming
-nexus chat --no-stream "Generate a Python function"
-```
-
-## 🎯 Examples
-
-### File Operations
-
-```bash
-nexus chat "Read the contents of main.py"
-nexus chat "Create a new file called test.py with a hello world function"
-nexus chat "List all files in the src directory"
-```
-
-### Code Generation
-
-```bash
-nexus chat "Generate a Python function to calculate fibonacci numbers"
-nexus chat "Create a REST API endpoint using FastAPI"
-nexus chat "Write unit tests for the calculator module"
-```
-
-### Code Review
-
-```bash
-nexus chat "Review the code in utils.py and suggest improvements"
-nexus chat "Check for security issues in the authentication module"
-```
-
-### Shell Commands
-
-```bash
-nexus chat "Run the tests using pytest"
-nexus chat "Check the git status"
 ```
 
 ## 🏗️ Project Structure
@@ -170,113 +156,64 @@ nexus chat "Check the git status"
 ```
 nexus/
 ├── nexus/
-│   ├── agent/          # LangGraph state machine
-│   │   ├── graph.py    # Agent graph definition
-│   │   ├── nodes.py    # Graph nodes
-│   │   └── state.py    # State definitions
+│   ├── agent/          # Core agent logic
+│   │   ├── graph.py    # LangGraph definition & tool loading
+│   │   ├── nodes.py    # Agent reasoning nodes
+│   │   └── state.py    # State schema
 │   │
-│   ├── tools/          # LangChain tools
-│   │   ├── file_ops.py # File operations
-│   │   └── shell.py    # Shell commands
-│   │
-│   ├── memory/         # Memory management
-│   │   └── conversation.py
+│   ├── tools/          # Tool definitions
+│   │   ├── mcp.py      # MCP client & configuration handler
+│   │   ├── file_ops.py # Built-in file tools
+│   │   └── shell.py    # Built-in shell tools
 │   │
 │   ├── config/         # Configuration
 │   │   ├── settings.py # Pydantic settings
 │   │   └── prompts.py  # System prompts
 │   │
-│   ├── ui/             # User interface
-│   │   ├── cli.py      # Rich-Click CLI
-│   │   └── console.py  # Rich console
+│   ├── ui/             # Terminal Interface
+│   │   ├── cli.py      # CLI entry point & UI components
+│   │   └── console.py  # Rich console instance
 │   │
-│   ├── utils/          # Utilities
-│   │   ├── logging.py  # Structured logging
-│   │   └── tracing.py  # LangSmith tracing
-│   │
-│   └── main.py         # Entry point
+│   └── main.py         # App entry point
 │
-├── docs/               # Documentation
-├── .env.example        # Environment template
-├── pyproject.toml      # Project configuration
-└── readme.md           # This file
+├── .nexus/             # Local config directory
+│   ├── mcp_config.json # MCP server definitions
+│   └── prompts/        # Custom user prompts
+│
+└── readme.md           # Documentation
 ```
 
-## ⚙️ Configuration
-
-Configuration is managed through environment variables and can be customized in `.env`:
+## ⚙️ Configuration Variables
 
 | Variable | Description | Default |
 |----------|-------------|---------|
 | `OPENAI_API_KEY` | OpenAI API key | Required |
 | `OPENAI_BASE_URL` | OpenAI base URL | None |
-| `LANGSMITH_API_KEY` | LangSmith API key | None |
-| `LANGSMITH_PROJECT` | LangSmith project name | nexus |
-| `LANGSMITH_TRACING` | Enable LangSmith tracing | true |
-| `LOG_LEVEL` | Logging level | INFO |
-| `DEBUG` | Debug mode | false |
-
-## 💾 Memory Management
-
-Nexus uses **LangGraph's state-based memory** for conversation management:
-
-- **Persistent Checkpointing** - All conversations are automatically saved to SQLite
-- **Thread-based Sessions** - Use `--thread-id` to continue previous conversations
-- **Message History** - Full conversation context maintained across sessions
-- **No Manual Memory** - LangGraph handles message persistence automatically
-
-The `memory/` module provides a simple `ConversationMemory` class for basic use cases, but the agent primarily uses LangGraph's built-in state management (`AgentState`) which integrates seamlessly with checkpointing.
-
-## 🔧 Development
-
-### Code Style
-
-The project follows strict code style guidelines:
-
-- **Ruff** for linting
-- **isort** for import sorting
-- **Type hints** for all functions
-- **Docstrings** following Google style
-
-### Running Linters
-
-```bash
-# Run ruff
-ruff check .
-
-# Run isort
-isort .
-```
-
-## 📊 Observability
-
-Nexus integrates with LangSmith for full observability:
-
-1. **Tracing** - Every LLM call is traced
-2. **Debugging** - Inspect prompts and responses
-3. **Analytics** - Cost and latency tracking
-4. **Evaluation** - Test and improve performance
-
-View traces at: https://smith.langchain.com
+| `LANGSMITH_TRACING` | Enable tracing | true |
+| `LOG_LEVEL` | Logging verbosity | INFO |
+| `CHECKPOINT_DB` | SQLite DB path | checkpoints.db |
 
 ## 🤝 Contributing
 
-Contributions are welcome! Please feel free to submit a Pull Request.
+Contributions are welcome! Please follow the code style guidelines:
+
+1.  Use **Ruff** for linting.
+2.  Use **MyPy/Ty** for type checking.
+3.  Ensure all functions have docstrings.
+
+```bash
+ruff check .
+```
 
 ## 📄 License
 
-This project is licensed under the MIT License - see the [LICENSE](license) file for details.
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
 ## 🙏 Acknowledgments
 
-- Built with [LangChain](https://langchain.com)
-- Powered by [LangGraph](https://langchain-ai.github.io/langgraph/)
-- Observability by [LangSmith](https://smith.langchain.com)
-- UI by [Rich](https://rich.readthedocs.io/) and [Rich-Click](https://github.com/ewels/rich-click)
-
-## 📞 Support
-
-For issues and questions, please open an issue on GitHub.
+- **LangChain & LangGraph** for the agent framework.
+- **Anthropic & MCP Team** for the Model Context Protocol standard.
+- **Rich** for the terminal UI.
 
 ---
 

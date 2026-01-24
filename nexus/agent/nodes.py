@@ -97,7 +97,7 @@ def create_agent_node(
         filtered_tools: list = filter_tools_by_mode(tools, current_mode, mcp_tools)
         llm_with_tools: Any = llm.bind_tools(filtered_tools)
 
-        messages: list = state["messages"]
+        messages: list = state.get("messages", [])
 
         max_text_chars = 10000
         processed_messages = []
@@ -141,7 +141,10 @@ def should_continue(state: AgentState) -> str:
         None
     """
 
-    messages: list = state["messages"]
+    messages: list = state.get("messages", [])
+    if not messages:
+        return "end"
+
     last_message: Any = messages[-1]
 
     if state.get("iteration_count", 0) >= settings.max_iterations:
@@ -172,14 +175,18 @@ async def approval_node(state: AgentState) -> AgentState:
 
     console: Console = Console()
 
-    last_message: Any = state["messages"][-1]
+    messages: list = state.get("messages", [])
+    if not messages:
+        return state
+
+    last_message: Any = messages[-1]
 
     current_mode_str: str = state.get("current_mode", "CODE")
     current_mode: AgentMode = AgentMode[current_mode_str]
 
     all_approved: bool = True
 
-    for tool_call in last_message.tool_calls:  # ty:ignore[unresolved-attribute]
+    for tool_call in last_message.tool_calls:
         tool_name: str = tool_call["name"]
         tool_args: dict = tool_call["args"]
 

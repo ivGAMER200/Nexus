@@ -4,12 +4,15 @@ Rich-Click CLI for Nexus.
 """
 
 import asyncio
+import time
 from typing import Any
 
 import rich_click as click
 from langchain_core.messages import HumanMessage
 from langgraph.checkpoint.sqlite.aio import AsyncSqliteSaver
 from rich.align import Align
+from rich.console import Group
+from rich.live import Live
 from rich.markdown import Markdown
 from rich.panel import Panel
 from rich.progress import Progress, SpinnerColumn, TextColumn
@@ -18,6 +21,7 @@ from rich.table import Table, box
 from rich.text import Text
 
 from nexus.agent.graph import create_agent_graph
+from nexus.agent.metrics import ChatMetrics, MetricsManager
 from nexus.commands.core import register_core_commands
 from nexus.commands.registry import CommandRegistry
 from nexus.config.prompts import get_config_status
@@ -42,7 +46,7 @@ PADDING_WIDE: tuple[int, int] = (1, 4)
 def print_banner() -> None:
     """Print Nexus Banner.
 
-    Display a modern, responsive banner for Nexus.
+    Display modern responsive banner.
 
     Args:
         None
@@ -70,13 +74,128 @@ def print_banner() -> None:
     console.print(Align.center(banner_panel))
 
 
-def _print_session_info(thread_id: str, mode: str = "CODE", *, stream: bool) -> None:
-    """Print Session Info.
+def _get_session_table(thread_id: str, mode: str, *, stream: bool) -> Table:
+    """Get Session Table.
+
+    Generate table for session information.
 
     Args:
-        thread_id: str - Thread ID.
-        mode: str - Current agent mode.
-        stream: bool - Streaming enabled.
+        thread_id: str - Thread identifier.
+        mode: str - Agent mode.
+        stream: bool - Streaming status.
+
+    Returns:
+        Table - Session information table.
+
+    Raises:
+        None
+    """
+
+    mode_colors = {"CODE": "green", "ASK": "blue", "ARCHITECT": "magenta"}
+    mode_style = mode_colors.get(mode, "cyan")
+
+    table = Table.grid(padding=(0, 2))
+    table.add_column(style="dim", justify="right")
+    table.add_column(style="cyan")
+    table.add_row("Model", settings.model_name)
+    table.add_row("Mode", f"[{mode_style}]{mode}[/{mode_style}]")
+    table.add_row("Thread", thread_id)
+    table.add_row("Working Dir", str(settings.working_directory))
+    table.add_row("Streaming", "Enabled" if stream else "Disabled")
+    return table
+
+
+def _get_prompts_table(status: dict) -> Table:
+    """Get Prompts Table.
+
+    Generate table for custom prompts.
+
+    Args:
+        status: dict - Configuration status information.
+
+    Returns:
+        Table - Prompts information table.
+
+    Raises:
+        None
+    """
+
+    table = Table(box=box.SIMPLE_HEAD, show_edge=False, padding=(0, 1), expand=True)
+    table.add_column("File", style="cyan")
+    table.add_column("Lines", justify="right", style="dim")
+
+    if status["prompts"]["loaded"] > 0:
+        for p in status["prompts"]["files"]:
+            table.add_row(p["name"], f"{p['lines']}")
+    else:
+        table.add_row("[dim]No valid prompts found[/dim]", "")
+    return table
+
+
+def _get_rules_table(status: dict) -> Table:
+    """Get Rules Table.
+
+    Generate table for loaded rules.
+
+    Args:
+        status: dict - Configuration status information.
+
+    Returns:
+        Table - Rules information table.
+
+    Raises:
+        None
+    """
+
+    table = Table(box=box.SIMPLE_HEAD, show_edge=False, padding=(0, 1), expand=True)
+    table.add_column("File", style="cyan")
+    table.add_column("Lines", justify="right", style="dim")
+
+    if status["rules"]["loaded"] > 0:
+        for r in status["rules"]["files"]:
+            table.add_row(r["name"], f"{r['lines']}")
+    else:
+        table.add_row("[dim]No valid rules found[/dim]", "")
+    return table
+
+
+def _get_mcp_table() -> tuple[Table, int]:
+    """Get MCP Table.
+
+    Generate table for MCP server information.
+
+    Args:
+        None
+
+    Returns:
+        tuple[Table, int] - Table and count of loaded servers.
+
+    Raises:
+        None
+    """
+
+    status = get_mcp_status()
+    table = Table(box=box.SIMPLE_HEAD, show_edge=False, padding=(0, 1), expand=True)
+    table.add_column("Server", style="cyan")
+    table.add_column("Command", justify="right", style="dim")
+
+    if status["loaded"] > 0:
+        for s in status["servers"]:
+            table.add_row(s["name"], s["command"])
+    else:
+        table.add_row("[dim]No active MCP servers[/dim]", "")
+    return table, status["loaded"]
+
+
+def _print_session_info(thread_id: str, mode: str = "CODE", *, stream: bool) -> None:
+    """Print Session Information.
+
+    Display session configuration details.
+
+    Args:
+        thread_id: str - Thread identifier.
+        mode: str - Agent mode.
+        stream: bool - Streaming status.
 
     Returns:
         None
@@ -85,15 +204,7 @@ def _print_session_info(thread_id: str, mode: str = "CODE", *, stream: bool) -> 
         None
     """
 
-    session_table = Table.grid(padding=(0, 2))
-    session_table.add_column(style="dim", justify="right")
-    session_table.add_column(style="cyan")
-    session_table.add_row("Model", settings.model_name)
-    session_table.add_row("Mode", mode)
-    session_table.add_row("Thread", thread_id)
-    session_table.add_row("Working Dir", str(settings.working_directory))
-    session_table.add_row("Streaming", "Enabled" if stream else "Disabled")
-
+    session_table = _get_session_table(thread_id, mode, stream=stream)
     session_panel = Panel(
         session_table,
         title="[bold cyan]Session[/bold cyan]",
@@ -102,66 +213,23 @@ def _print_session_info(thread_id: str, mode: str = "CODE", *, stream: bool) -> 
     )
 
     status = get_config_status()
-    prompts_loaded = status["prompts"]["loaded"]
-    rules_loaded = status["rules"]["loaded"]
-
-    prompts_table = Table(box=box.SIMPLE_HEAD, show_edge=False, padding=(0, 1), expand=True)
-    prompts_table.add_column("File", style="cyan")
-    prompts_table.add_column("Lines", justify="right", style="dim")
-
-    if prompts_loaded > 0:
-        for p in status["prompts"]["files"]:
-            prompts_table.add_row(p["name"], f"{p['lines']}")
-    else:
-        prompts_table.add_row("[dim]No valid prompts found[/dim]", "")
-
+    prompts_table = _get_prompts_table(status)
     prompts_panel = Panel(
         prompts_table,
-        title=f"[bold cyan]Custom Prompts ({prompts_loaded})[/bold cyan]",
+        title=f"[bold cyan]Custom Prompts ({status['prompts']['loaded']})[/bold cyan]",
         border_style="cyan",
         width=PANEL_WIDTH_SMALL,
     )
 
-    rules_table = Table(box=box.SIMPLE_HEAD, show_edge=False, padding=(0, 1), expand=True)
-    rules_table.add_column("File", style="cyan")
-    rules_table.add_column("Lines", justify="right", style="dim")
-
-    if rules_loaded > 0:
-        for r in status["rules"]["files"]:
-            rules_table.add_row(r["name"], f"{r['lines']}")
-    else:
-        rules_table.add_row("[dim]No valid rules found[/dim]", "")
-
+    rules_table = _get_rules_table(status)
     rules_panel = Panel(
         rules_table,
-        title=f"[bold cyan]Loaded Rules ({rules_loaded})[/bold cyan]",
+        title=f"[bold cyan]Loaded Rules ({status['rules']['loaded']})[/bold cyan]",
         border_style="cyan",
         width=PANEL_WIDTH_SMALL,
     )
 
-    console.print(Align.center(session_panel))
-
-    if prompts_loaded > 0:
-        console.print(Align.center(prompts_panel))
-
-    if rules_loaded > 0:
-        console.print(Align.center(rules_panel))
-
-    mcp_status = get_mcp_status()
-    mcp_loaded = mcp_status["loaded"]
-
-    mcp_table = Table(box=box.SIMPLE_HEAD, show_edge=False, padding=(0, 1), expand=True)
-    mcp_table.add_column("Server", style="cyan")
-    mcp_table.add_column("Command", justify="right", style="dim")
-
-    if mcp_loaded > 0:
-        for s in mcp_status["servers"]:
-            cmd_preview = s["command"].split("\\")[-1]
-            tool_count = s.get("tools", 0)
-            mcp_table.add_row(s["name"], f"{cmd_preview} [dim]({tool_count} tools)[/dim]")
-    else:
-        mcp_table.add_row("[dim]No active MCP servers[/dim]", "")
-
+    mcp_table, mcp_loaded = _get_mcp_table()
     mcp_panel = Panel(
         mcp_table,
         title=f"[bold cyan]MCP Servers ({mcp_loaded})[/bold cyan]",
@@ -169,15 +237,19 @@ def _print_session_info(thread_id: str, mode: str = "CODE", *, stream: bool) -> 
         width=PANEL_WIDTH_SMALL,
     )
 
+    console.print(Align.center(session_panel))
+    if status["prompts"]["loaded"] > 0:
+        console.print(Align.center(prompts_panel))
+    if status["rules"]["loaded"] > 0:
+        console.print(Align.center(rules_panel))
     if mcp_loaded > 0:
         console.print(Align.center(mcp_panel))
-
     console.print()
 
 
 @click.group(invoke_without_command=True)
 @click.pass_context
-@click.version_option(version="1.0.0", prog_name="Nexus")
+@click.version_option(version="1.0.0", prog_name="nexus")
 def cli(ctx: click.Context) -> None:
     """Nexus CLI.
 
@@ -227,23 +299,38 @@ def cli(ctx: click.Context) -> None:
 def chat(message: str | None, thread_id: str, *, stream: bool) -> None:
     """Chat Command.
 
-    💬 Start an interactive chat session with the agent.
+    Start interactive chat session.
 
-    **Examples:**
-    ```bash
-    $ nexus chat "List all Python files"
-    $ nexus chat --thread-id my-project
-    $ nexus chat --no-stream "Refactor main.py"
-    ```
+    Args:
+        message: str | None - Initial message to process.
+        thread_id: str - Conversation thread identifier.
+        stream: bool - Enable real-time response streaming.
+
+    Returns:
+        None
+
+    Raises:
+        None
     """
 
     asyncio.run(_chat(message, thread_id, stream=stream))
 
 
 async def _chat(message: str | None, thread_id: str, *, stream: bool) -> None:
-    """Internal Chat Function.
+    """Internal Chat Execution.
 
-    Internal async chat function.
+    Execute internal chat logic within async loop.
+
+    Args:
+        message: str | None - Initial message.
+        thread_id: str - Thread identifier.
+        stream: bool - Streaming status.
+
+    Returns:
+        None
+
+    Raises:
+        None
     """
 
     print_banner()
@@ -261,76 +348,437 @@ async def _chat(message: str | None, thread_id: str, *, stream: bool) -> None:
 
                 _print_session_info(thread_id, mode=current_mode, stream=stream)
 
+                metrics_manager = MetricsManager()
+
                 if message is None:
-                    console.print(
-                        Align.center(
-                            Panel(
-                                "[dim]Type your message and press Enter\n"
-                                "Commands: [yellow]exit[/yellow], [yellow]quit[/yellow], "
-                                "[yellow]q[/yellow] to exit[/dim]",
-                                border_style="dim",
-                                width=PANEL_WIDTH_SMALL,
-                            ),
-                        ),
-                    )
-                    console.print()
-
-                    while True:
-                        try:
-                            console.print(Align.center(Rule(style="dim"), width=PANEL_WIDTH_SMALL))
-
-                            state = await agent.aget_state(config)
-                            current_mode = state.values.get("current_mode", "CODE") if state.values else "CODE"
-
-                            prompt_text = f"[[cyan]{current_mode}[/cyan]] [bold green]>[/bold green] "
-                            message = console.input(f"\n{prompt_text}")
-
-                            if message.lower() in ["exit", "quit", "q"]:
-                                console.print("\n[dim]Goodbye! 👋[/dim]\n")
-                                break
-
-                            if not message.strip():
-                                continue
-
-                            state = await agent.aget_state(config)
-
-                            def get_state(st=state) -> dict:
-                                return st.values if st.values else {}
-
-                            async def update_state(new_values: dict) -> None:
-                                await agent.aupdate_state(config, new_values)
-
-                            context = {
-                                "get_state": get_state,
-                                "update_state": update_state,
-                            }
-
-                            if message.startswith("/") and await CommandRegistry.execute(message, context=context):
-                                continue
-
-                            await _process_message(agent, message, config, stream=stream)
-
-                        except KeyboardInterrupt:
-                            console.print("\n\n[dim]Use 'exit' to quit[/dim]")
-                        except EOFError:
-                            console.print("\n[dim]Goodbye! 👋[/dim]\n")
-                            break
+                    await _interactive_chat_loop(agent, config, metrics_manager, thread_id, stream=stream)
                 else:
-                    await _process_message(agent, message, config, stream=stream)
+                    await _process_message(
+                        agent,
+                        message,
+                        config,
+                        stream=stream,
+                        metrics_manager=metrics_manager,
+                        thread_id=thread_id,
+                        mode=current_mode,
+                    )
+                    _print_metrics_summary(metrics_manager, thread_id)
         finally:
             status.stop()
 
 
-async def _process_message(agent: Any, message: str, config: dict, *, stream: bool) -> None:
-    """Process Message.
+async def _interactive_chat_loop(
+    agent: Any,
+    config: dict,
+    metrics_manager: MetricsManager,
+    thread_id: str,
+    *,
+    stream: bool,
+) -> None:
+    """Interactive Chat Loop.
 
-    Process a single message.
+    Manage interactive session input and output.
 
     Args:
-        agent: any - Agent instance.
-        message: str - Message to process.
-        config: dict - Configuration.
-        stream: bool - Stream responses.
+        agent: Any - Agent instance.
+        config: dict - Configuration dictionary.
+        metrics_manager: MetricsManager - Performance metrics manager.
+        thread_id: str - Thread identifier.
+        stream: bool - Streaming status.
+
+    Returns:
+        None
+
+    Raises:
+        None
+    """
+
+    console.print(
+        Align.center(
+            Panel(
+                "[dim]Type your message and press Enter\n"
+                "Commands: [yellow]exit[/yellow], [yellow]quit[/yellow], "
+                "[yellow]q[/yellow] to exit[/dim]",
+                border_style="dim",
+                width=PANEL_WIDTH_SMALL,
+            ),
+        ),
+    )
+    console.print()
+
+    while True:
+        try:
+            state = await agent.aget_state(config)
+            current_mode = state.values.get("current_mode", "CODE") if state.values else "CODE"
+
+            _print_header("User", mode=current_mode)
+
+            prompt_text = "[bold green]> [/bold green]"
+            message = console.input(f"{prompt_text}")
+
+            if message.lower() in ["exit", "quit", "q"]:
+                console.print("\n[dim]Goodbye! 👋[/dim]\n")
+                _print_metrics_summary(metrics_manager, thread_id)
+                break
+
+            if not message.strip():
+                continue
+
+            async def get_current_state() -> dict:
+                """Fetch current agent state."""
+                st = await agent.aget_state(config)
+                return st.values if st.values else {}
+
+            async def update_state(new_values: dict) -> None:
+                """Update agent state values."""
+                await agent.aupdate_state(config, new_values, as_node="agent")
+
+            context = {
+                "get_state": get_current_state,
+                "update_state": update_state,
+            }
+
+            if message.startswith("/") and await CommandRegistry.execute(message, context=context):
+                continue
+
+            await _process_message(
+                agent,
+                message,
+                config,
+                stream=stream,
+                metrics_manager=metrics_manager,
+                thread_id=thread_id,
+                mode=current_mode,
+            )
+
+        except KeyboardInterrupt:
+            console.print("\n\n[dim]Use 'exit' to quit[/dim]")
+        except EOFError:
+            console.print("\n[dim]Goodbye! 👋[/dim]\n")
+            _print_metrics_summary(metrics_manager, thread_id)
+            break
+
+
+def _print_metrics_summary(metrics_manager: MetricsManager, thread_id: str) -> None:
+    """Print Metrics Summary.
+
+    Display aggregated session metrics in table.
+
+    Args:
+        metrics_manager: MetricsManager - Metrics manager instance.
+        thread_id: str - Thread identifier.
+
+    Returns:
+        None
+
+    Raises:
+        None
+    """
+
+    summary: dict = metrics_manager.get_session_summary(thread_id)
+    if not summary or not summary.get("total_requests"):
+        return
+
+    table = Table(
+        title="[bold cyan]Session Metrics Summary[/bold cyan]",
+        show_header=True,
+        header_style="bold white",
+        border_style="cyan",
+        box=box.ROUNDED,
+    )
+
+    table.add_column("Metric", style="dim")
+    table.add_column("Value", style="white")
+
+    table.add_row("Total Requests", str(summary["total_requests"]))
+    table.add_row("Total Latency", f"{summary['total_latency']:.2f}s")
+    table.add_row("Avg Latency", f"{summary['avg_latency']:.2f}s")
+
+    ttft = summary.get("avg_ttft")
+    if ttft is not None:
+        table.add_row("Avg TTFT", f"{ttft:.2f}s")
+
+    table.add_row(Rule(style="dim"), Rule(style="dim"))
+    table.add_row("Total Input Tokens", str(summary["total_input_tokens"]))
+    table.add_row("Total Output Tokens", str(summary["total_output_tokens"]))
+    table.add_row("Total Tokens", str(summary["total_tokens"]))
+
+    cached = summary.get("total_cached_tokens", 0)
+    if cached > 0:
+        table.add_row("Total Cached Tokens", str(cached))
+
+    console.print(Align.center(table, width=PANEL_WIDTH_MED))
+    console.print()
+
+
+def _print_request_metrics(metrics: ChatMetrics) -> None:
+    """Print Request Metrics.
+
+    Display performance metrics for single request.
+
+    Args:
+        metrics: ChatMetrics - Performance metrics data.
+
+    Returns:
+        None
+
+    Raises:
+        None
+    """
+
+    latency = f"{metrics.request_latency:.2f}s"
+    ttft = f"{metrics.first_token_latency:.2f}s" if metrics.first_token_latency else "N/A"
+
+    usage_parts = []
+    if metrics.input_tokens > 0:
+        usage_parts.append(f"{metrics.input_tokens} in")
+    if metrics.output_tokens > 0:
+        usage_parts.append(f"{metrics.output_tokens} out")
+    if metrics.cached_tokens > 0:
+        usage_parts.append(f"{metrics.cached_tokens} cached")
+
+    usage_str = f"Usage: {metrics.total_tokens} tokens ({', '.join(usage_parts)})" if usage_parts else "Usage: N/A"
+
+    metrics_text = Text.assemble(
+        (" Latency: ", "dim"),
+        (f"{latency}", "cyan dim"),
+        (" | TTFT: ", "dim"),
+        (f"{ttft}", "cyan dim"),
+        (" | ", "dim"),
+        (f"{usage_str} ", "dim"),
+    )
+
+    console.print(Rule(metrics_text, style="dim"))
+
+
+def _print_header(role: str, mode: str | None = None) -> None:
+    """Print Header.
+
+    Display styled header for role or mode.
+
+    Args:
+        role: str - Role name.
+        mode: str | None - Optional agent mode.
+
+    Returns:
+        None
+
+    Raises:
+        None
+    """
+
+    if role.lower() == "user":
+        mode_colors = {
+            "CODE": "green",
+            "ASK": "blue",
+            "ARCHITECT": "magenta",
+        }
+        style = mode_colors.get(mode or "CODE", "green")
+        label = f" {mode or 'USER'} "
+    else:
+        style = "cyan"
+        label = " Assistant "
+
+    console.print()
+    console.print(Rule(f"[bold white on {style}] {label} [/bold white on {style}]", style=style))
+    console.print()
+
+
+class StreamingResponseHandler:
+    """StreamingResponseHandler.
+
+    Manage state and rendering of streaming AI responses.
+
+    Inherits:
+        None
+
+    Attrs:
+        full_content: str - Accumulated response content.
+
+    Methods:
+        __init__(): Initialize handler.
+        update(chunk): Update content with chunk.
+        render(): Render current state as Rich group.
+    """
+
+    def __init__(self) -> None:
+        """Initialize StreamingResponseHandler.
+
+        Set default empty content.
+
+        Args:
+            None
+
+        Returns:
+            None
+
+        Raises:
+            None
+        """
+
+        self.full_content: str = ""
+
+    def update(self, chunk: str) -> None:
+        """Update content with new chunk.
+
+        Append chunk to full content string.
+
+        Args:
+            chunk: str - Text chunk from stream.
+
+        Returns:
+            None
+
+        Raises:
+            None
+        """
+
+        self.full_content += chunk
+
+    def render(self) -> Group:
+        """Render current state.
+
+        Generate Rich Group containing Markdown.
+
+        Args:
+            None
+
+        Returns:
+            Group - Renderable content group.
+
+        Raises:
+            None
+        """
+
+        if not self.full_content:
+            return Group(Text("...", style="dim"))
+
+        return Group(Markdown(self.full_content))
+
+
+async def _handle_streaming_response(
+    agent: Any,
+    input_state: dict,
+    config: dict,
+    mode: str,
+    start_time: float,
+) -> tuple[float | None, dict]:
+    """Handle Streaming Response.
+
+    Process streaming events and render live output.
+
+    Args:
+        agent: Any - Agent instance.
+        input_state: dict - Input state dictionary.
+        config: dict - Configuration mapping.
+        mode: str - Current mode identifier.
+        start_time: float - Start timestamp.
+
+    Returns:
+        tuple[float | None, dict] - TTFT and usage dictionary.
+
+    Raises:
+        None
+    """
+
+    _print_header("Assistant", mode=mode)
+    ttft: float | None = None
+    usage: dict = {}
+
+    handler = StreamingResponseHandler()
+    with Live(handler.render(), console=console, refresh_per_second=10) as live:
+        async for event in agent.astream_events(input_state, config, version="v2"):
+            kind: str = event["event"]
+
+            if kind == "on_chat_model_stream":
+                if ttft is None:
+                    ttft = time.time() - start_time
+                content: str = event["data"]["chunk"].content
+                if content:
+                    handler.update(content)
+                    live.update(handler.render())
+            elif kind == "on_chat_model_end":
+                output = event["data"].get("output", {})
+                if hasattr(output, "usage_metadata") and output.usage_metadata:
+                    usage = output.usage_metadata
+            elif kind == "on_tool_start":
+                tool_name: str = event["name"]
+                live.stop()
+                console.print(f"\n[dim]┌─ Tool: [cyan]{tool_name}[/cyan][/dim]")
+            elif kind == "on_tool_end":
+                console.print("[dim]└─ ✓ Completed[/dim]\n")
+                live.start()
+
+    console.print()
+    return ttft, usage
+
+
+async def _handle_static_response(agent: Any, input_state: dict, config: dict, mode: str) -> dict:
+    """Handle Static Response.
+
+    Process synchronous response and render panel.
+
+    Args:
+        agent: Any - Agent instance.
+        input_state: dict - Input state dictionary.
+        config: dict - Configuration mapping.
+        mode: str - Current mode identifier.
+
+    Returns:
+        dict - Usage metadata dictionary.
+
+    Raises:
+        None
+    """
+
+    with console.status("[bold cyan]Processing...[/bold cyan]", spinner="dots"):
+        result: dict = await agent.ainvoke(input_state, config)
+
+    last_message: Any = result["messages"][-1]
+    usage: dict = {}
+    if hasattr(last_message, "usage_metadata") and last_message.usage_metadata:
+        usage = last_message.usage_metadata
+
+    mode_colors = {"CODE": "green", "ASK": "blue", "ARCHITECT": "magenta"}
+    style = mode_colors.get(mode, "cyan")
+
+    console.print(
+        Align.center(
+            Panel(
+                Markdown(last_message.content),
+                title=f"[bold white on {style}] Assistant [/bold white on {style}]",
+                border_style=style,
+                padding=(1, 2),
+                width=PANEL_WIDTH_MED,
+            ),
+        ),
+    )
+    console.print()
+    return usage
+
+
+async def _process_message(  # noqa: PLR0913
+    agent: Any,
+    message: str,
+    config: dict,
+    *,
+    stream: bool,
+    metrics_manager: MetricsManager,
+    thread_id: str,
+    mode: str = "CODE",
+) -> None:
+    """Process Message.
+
+    Execute single message processing and track metrics.
+
+    Args:
+        agent: Any - Agent instance.
+        message: str - User message.
+        config: dict - Configuration mapping.
+        stream: bool - Streaming enabled status.
+        metrics_manager: MetricsManager - Performance tracking manager.
+        thread_id: str - Thread identifier.
+        mode: str - Agent operational mode.
 
     Returns:
         None
@@ -348,45 +796,27 @@ async def _process_message(agent: Any, message: str, config: dict, *, stream: bo
     }
 
     console.print()
+    start_time = time.time()
 
     if stream:
-        console.print("[bold cyan]Assistant[/bold cyan]")
-        console.print()
-
-        async for event in agent.astream_events(input_state, config, version="v2"):
-            kind: str = event["event"]
-
-            if kind == "on_chat_model_stream":
-                content: str = event["data"]["chunk"].content
-                if content:
-                    console.print(content, end="")
-
-            elif kind == "on_tool_start":
-                tool_name: str = event["name"]
-                console.print(f"\n\n[dim]┌─ Tool: [cyan]{tool_name}[/cyan][/dim]")
-
-            elif kind == "on_tool_end":
-                console.print("[dim]└─ ✓ Completed[/dim]")
-
-        console.print("\n")
-
+        ttft, usage = await _handle_streaming_response(agent, input_state, config, mode, start_time)
     else:
-        with console.status("[bold cyan]Processing...[/bold cyan]", spinner="dots"):
-            result: dict = await agent.ainvoke(input_state, config)
+        ttft = None
+        usage = await _handle_static_response(agent, input_state, config, mode)
 
-        last_message: Any = result["messages"][-1]
-        console.print(
-            Align.center(
-                Panel(
-                    Markdown(last_message.content),
-                    title="[bold cyan]Assistant[/bold cyan]",
-                    border_style="cyan",
-                    padding=(1, 2),
-                    width=PANEL_WIDTH_MED,
-                ),
-            ),
-        )
-        console.print()
+    total_latency = time.time() - start_time
+    metrics = ChatMetrics(
+        thread_id=thread_id,
+        timestamp=start_time,
+        request_latency=total_latency,
+        first_token_latency=ttft,
+        input_tokens=usage.get("input_tokens", 0),
+        output_tokens=usage.get("output_tokens", 0),
+        total_tokens=usage.get("total_tokens", 0),
+        cached_tokens=usage.get("cached_tokens", 0),
+    )
+    metrics_manager.save_metrics(metrics)
+    _print_request_metrics(metrics)
 
 
 @cli.command()
@@ -406,7 +836,17 @@ async def _process_message(agent: Any, message: str, config: dict, *, stream: bo
 def history(thread_id: str, limit: int) -> None:
     """History Command.
 
-    📜 Show conversation history for a specific thread.
+    Show conversation history for thread.
+
+    Args:
+        thread_id: str - Thread identifier.
+        limit: int - Maximum checkpoints to display.
+
+    Returns:
+        None
+
+    Raises:
+        None
     """
 
     asyncio.run(_show_history(thread_id, limit))
@@ -415,7 +855,17 @@ def history(thread_id: str, limit: int) -> None:
 async def _show_history(thread_id: str, limit: int) -> None:
     """Show History.
 
-    Show conversation history.
+    Display historical conversation states.
+
+    Args:
+        thread_id: str - Thread identifier.
+        limit: int - Checkpoint limit.
+
+    Returns:
+        None
+
+    Raises:
+        None
     """
 
     print_banner()
@@ -483,7 +933,16 @@ async def _show_history(thread_id: str, limit: int) -> None:
 def config() -> None:
     """Config Command.
 
-    ⚙️ Show current application configuration and environment settings.
+    Show application settings and environment.
+
+    Args:
+        None
+
+    Returns:
+        None
+
+    Raises:
+        None
     """
 
     print_banner()
@@ -498,7 +957,6 @@ def config() -> None:
     table.add_column("Setting", style="cyan", no_wrap=True)
     table.add_column("Value", style="white")
 
-    # Show default mode (since this is static config)
     table.add_row("Agent Mode", "[bold cyan]CODE[/bold cyan] [dim](Default)[/dim]")
     table.add_row("Model", f"[green]{settings.model_name}[/green]")
     table.add_row("Temperature", f"[yellow]{settings.temperature}[/yellow]")

@@ -98,7 +98,7 @@ Before executing any request or writing code, you **MUST** perform the following
 
 ### 4. Output Format
 
-- **THOUGHT BLOCK (CRITICAL):** You **MUST** start every response with a `THOUGHT:` block. In this block, explain what you are doing. Failure to do this will crash the system.
+- **Direct Response:** Provide your answer or proceed with tool calls directly.
 - Always use Markdown code blocks for code content.
 - File names and paths must be clearly indicated.
 - Provide clear, step-by-step implementation instructions.

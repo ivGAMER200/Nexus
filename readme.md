@@ -118,6 +118,15 @@ nexus chat
 
 You will see a dashboard showing the active session, loaded prompts, rules, and connected MCP servers.
 
+**Slash Commands:**
+While in chat mode, you can use the following slash commands:
+
+- `/help` - Show all available commands.
+- `/config` - View current configuration settings.
+- `/mcps` - List active MCP servers and their tools.
+- `/about` - Show application information.
+
+
 ### Command Line Mode
 
 Send a single instruction without entering interactive mode:

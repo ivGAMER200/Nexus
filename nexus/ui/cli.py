@@ -18,6 +18,8 @@ from rich.table import Table, box
 from rich.text import Text
 
 from nexus.agent.graph import create_agent_graph
+from nexus.commands.core import register_core_commands
+from nexus.commands.registry import CommandRegistry
 from nexus.config.prompts import get_config_status
 from nexus.config.settings import settings
 from nexus.tools.mcp import get_mcp_status
@@ -184,6 +186,8 @@ def cli(ctx: click.Context) -> None:
     - 🎨 Beautiful terminal UI
     """
 
+    register_core_commands()
+
     if ctx.invoked_subcommand is None:
         print_banner()
         welcome_panel = Panel(
@@ -271,6 +275,9 @@ async def _chat(message: str | None, thread_id: str, *, stream: bool) -> None:
                                 break
 
                             if not message.strip():
+                                continue
+
+                            if message.startswith("/") and CommandRegistry.execute(message):
                                 continue
 
                             await _process_message(agent, message, config, stream=stream)

@@ -209,7 +209,7 @@ def get_mcp_context_prompt() -> str:
 
         lines.append(f"### Server: {server_name}")
         lines.extend([f"- **{t['name']}**: {t['description']}" for t in tools])
-        lines.append("")  # Empty line between servers
+        lines.append("")
 
     return "\n".join(lines)
 

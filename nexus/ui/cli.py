@@ -11,6 +11,7 @@ import rich_click as click
 from langchain_core.messages import HumanMessage
 from langgraph.checkpoint.sqlite.aio import AsyncSqliteSaver
 from rich.align import Align
+from rich.columns import Columns
 from rich.console import Group
 from rich.live import Live
 from rich.markdown import Markdown
@@ -406,6 +407,7 @@ async def _interactive_chat_loop(
     )
     console.print()
 
+    session_start = time.time()
     while True:
         try:
             state = await agent.aget_state(config)
@@ -417,8 +419,8 @@ async def _interactive_chat_loop(
             message = console.input(f"{prompt_text}")
 
             if message.lower() in ["exit", "quit", "q"]:
-                console.print("\n[dim]Goodbye! 👋[/dim]\n")
-                _print_metrics_summary(metrics_manager, thread_id)
+                duration = time.time() - session_start
+                _print_exit_screen(metrics_manager, thread_id, duration)
                 break
 
             if not message.strip():
@@ -478,12 +480,97 @@ async def _interactive_chat_loop(
         except KeyboardInterrupt:
             console.print("\n\n[dim]Use 'exit' to quit[/dim]")
         except EOFError:
-            console.print("\n[dim]Goodbye! 👋[/dim]\n")
-            _print_metrics_summary(metrics_manager, thread_id)
+            duration = time.time() - session_start
+            _print_exit_screen(metrics_manager, thread_id, duration)
             break
 
 
-def _print_metrics_summary(metrics_manager: MetricsManager, thread_id: str) -> None:
+def _print_exit_screen(metrics_manager: MetricsManager, thread_id: str, duration: float) -> None:
+    """Print Premium Exit Screen.
+
+    Display session summary and goodbye message in a premium layout.
+
+    Args:
+        metrics_manager: MetricsManager - Session metrics manager.
+        thread_id: str - Thread identifier.
+        duration: float - Session duration in seconds.
+
+    Returns:
+        None
+
+    Raises:
+        None
+    """
+
+    summary = metrics_manager.get_session_summary(thread_id)
+
+    goodbye_text = Text.assemble(
+        ("NEXUS ARCHIVE COMPLETE", "bold cyan"),
+        ("\nSession terminated successfully. Standing by for next deployment.", "italic dim"),
+    )
+
+    minutes = int(duration // 60)
+    seconds = int(duration % 60)
+    duration_str = f"{minutes}m {seconds}s" if minutes > 0 else f"{seconds}s"
+
+    stats = []
+    if summary and summary.get("total_requests"):
+        stats.append(
+            Panel(
+                Align.center(f"[bold cyan]{summary['total_requests']}[/bold cyan]\n[dim]Requests[/dim]"),
+                border_style="dim",
+                width=20,
+            ),
+        )
+        stats.append(
+            Panel(
+                Align.center(f"[bold green]{summary.get('total_tokens', 0):,}[/bold green]\n[dim]Tokens[/dim]"),
+                border_style="dim",
+                width=20,
+            ),
+        )
+        stats.append(
+            Panel(
+                Align.center(f"[bold yellow]{duration_str}[/bold yellow]\n[dim]Session[/dim]"),
+                border_style="dim",
+                width=20,
+            ),
+        )
+
+    console.print()
+    console.print(Rule(style="dim"))
+    console.print()
+
+    console.print(
+        Align.center(
+            Panel(
+                Align.center(goodbye_text),
+                border_style="cyan",
+                padding=(1, 2),
+                width=PANEL_WIDTH_SMALL,
+            ),
+        ),
+    )
+
+    console.print()
+
+    if stats:
+        console.print(Align.center(Columns(stats, equal=True, expand=False)))
+        console.print()
+
+    if summary and summary.get("total_requests"):
+        _print_metrics_summary(metrics_manager, thread_id, hide_title=True)
+
+    console.print(Align.center("[dim]Nexus AI Agent • Developed by Rohit[/dim]"))
+    console.print()
+
+
+def _print_metrics_summary(
+    metrics_manager: MetricsManager,
+    thread_id: str,
+    *,
+    hide_title: bool = False,
+) -> None:
     """Print Metrics Summary.
 
     Display aggregated session metrics in table.
@@ -491,6 +578,7 @@ def _print_metrics_summary(metrics_manager: MetricsManager, thread_id: str) -> N
     Args:
         metrics_manager: MetricsManager - Metrics manager instance.
         thread_id: str - Thread identifier.
+        hide_title: bool - Flag to suppress table title.
 
     Returns:
         None
@@ -504,7 +592,7 @@ def _print_metrics_summary(metrics_manager: MetricsManager, thread_id: str) -> N
         return
 
     table = Table(
-        title="[bold cyan]Session Metrics Summary[/bold cyan]",
+        title="[bold cyan]Session Metrics Summary[/bold cyan]" if not hide_title else None,
         show_header=True,
         header_style="bold white",
         border_style="cyan",
@@ -572,7 +660,7 @@ def _print_request_metrics(metrics: ChatMetrics) -> None:
         (f"{usage_str} ", "dim"),
     )
 
-    console.print(Rule(metrics_text, style="dim"))
+    console.print(Rule(metrics_text, style="dim", align="right"))
 
 
 def _print_header(role: str, mode: str | None = None) -> None:

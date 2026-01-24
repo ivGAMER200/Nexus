@@ -17,6 +17,7 @@ from nexus.config.settings import settings
 from nexus.ui.console import console
 
 _active_mcp_tool_counts: dict[str, int] = {}
+_active_mcp_tools_info: dict[str, list[dict[str, str]]] = {}
 
 
 def _find_executable(command: str) -> str:
@@ -106,6 +107,7 @@ async def load_mcp_tools() -> AsyncIterator[list[BaseTool]]:
     """
 
     _active_mcp_tool_counts.clear()
+    _active_mcp_tools_info.clear()
 
     server_params = get_mcp_server_params()
     if not server_params:
@@ -130,7 +132,12 @@ async def load_mcp_tools() -> AsyncIterator[list[BaseTool]]:
                 client = MultiServerMCPClient(client_config)  # ty:ignore[invalid-argument-type]
                 clients.append(client)
                 tools = await client.get_tools()
+
                 _active_mcp_tool_counts[name] = len(tools)
+
+                tool_infos = [{"name": t.name, "description": t.description} for t in tools]
+                _active_mcp_tools_info[name] = tool_infos
+
                 all_tools.extend(tools)
             except Exception as e:  # noqa: BLE001
                 err_msg = str(e)
@@ -183,4 +190,33 @@ def get_mcp_status() -> dict[str, Any]:
     return status
 
 
-__all__: list[str] = ["get_mcp_server_params", "get_mcp_status", "load_mcp_tools"]
+def get_mcp_context_prompt() -> str:
+    """Get prompt context for MCP tools.
+
+    Returns a formatted string describing available MCP servers and provided tools.
+
+    Returns:
+        str - Formatted context string.
+    """
+
+    if not _active_mcp_tools_info:
+        return ""
+
+    lines = ["\n## Active MCP Servers & Tools\n"]
+    for server_name, tools in _active_mcp_tools_info.items():
+        if not tools:
+            continue
+
+        lines.append(f"### Server: {server_name}")
+        lines.extend([f"- **{t['name']}**: {t['description']}" for t in tools])
+        lines.append("")  # Empty line between servers
+
+    return "\n".join(lines)
+
+
+__all__: list[str] = [
+    "get_mcp_context_prompt",
+    "get_mcp_server_params",
+    "get_mcp_status",
+    "load_mcp_tools",
+]

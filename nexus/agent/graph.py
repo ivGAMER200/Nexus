@@ -16,7 +16,7 @@ from nexus.agent.nodes import approval_node, create_agent_node, should_continue
 from nexus.agent.state import AgentState
 from nexus.config.settings import settings
 from nexus.tools import all_tools
-from nexus.tools.mcp import load_mcp_tools
+from nexus.tools.mcp import get_mcp_context_prompt, load_mcp_tools
 
 
 @asynccontextmanager
@@ -46,7 +46,9 @@ async def create_agent_graph(checkpointer: Any | None = None) -> AsyncIterator[A
     async with load_mcp_tools() as mcp_tools:
         tools = all_tools + mcp_tools
 
-        agent_node = create_agent_node(llm, tools)
+        mcp_context = get_mcp_context_prompt()
+
+        agent_node = create_agent_node(llm, tools, mcp_context=mcp_context)
         tool_node = ToolNode(tools)
 
         workflow = StateGraph(AgentState)  # ty:ignore[invalid-argument-type]

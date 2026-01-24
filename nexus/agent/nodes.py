@@ -16,7 +16,7 @@ from nexus.config.prompts import SYSTEM_PROMPT
 from nexus.config.settings import settings
 
 
-def create_agent_node(llm: ChatOpenAI, tools: list) -> Callable:
+def create_agent_node(llm: ChatOpenAI, tools: list, mcp_context: str = "") -> Callable:
     """Create Agent Node.
 
     Create the main agent node.
@@ -24,6 +24,7 @@ def create_agent_node(llm: ChatOpenAI, tools: list) -> Callable:
     Args:
         llm: ChatOpenAI - Language model.
         tools: list - List of tools.
+        mcp_context: str - Optional MCP context string.
 
     Returns:
         callable - Agent node function.
@@ -33,6 +34,10 @@ def create_agent_node(llm: ChatOpenAI, tools: list) -> Callable:
     """
 
     llm_with_tools: Any = llm.bind_tools(tools)
+
+    full_system_prompt = SYSTEM_PROMPT
+    if mcp_context:
+        full_system_prompt += mcp_context
 
     def agent_node(state: AgentState) -> AgentState:
         """Agent Node.
@@ -66,7 +71,7 @@ def create_agent_node(llm: ChatOpenAI, tools: list) -> Callable:
         if len(processed_messages) > max_recent_messages:
             processed_messages = processed_messages[-max_recent_messages:]
 
-        final_messages = [SystemMessage(content=SYSTEM_PROMPT), *processed_messages]
+        final_messages = [SystemMessage(content=full_system_prompt), *processed_messages]
 
         response: AIMessage = llm_with_tools.invoke(final_messages)
 

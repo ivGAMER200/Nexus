@@ -19,6 +19,10 @@ async def execute_shell_command(
 
     Execute a shell command and return its output.
 
+    IMPORTANT: This tool does NOT support shell redirections (like '>', '>>'),
+    pipes ('|'), or command chaining (';', '&&'). For file creation or
+    modification, ALWAYS use the 'write_file' or 'edit_file' tools.
+
     Args:
         command: str - Shell command to execute.
         timeout: int - Timeout in seconds.

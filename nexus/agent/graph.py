@@ -44,12 +44,16 @@ async def create_agent_graph(checkpointer: Any | None = None) -> AsyncIterator[A
     )
 
     async with load_mcp_tools() as mcp_tools:
-        tools = all_tools + mcp_tools
-
+        all_available_tools = all_tools + mcp_tools
         mcp_context = get_mcp_context_prompt()
 
-        agent_node = create_agent_node(llm, tools, mcp_context=mcp_context)
-        tool_node = ToolNode(tools)
+        agent_node = create_agent_node(
+            llm,
+            all_tools,
+            mcp_tools,
+            mcp_context=mcp_context,
+        )
+        tool_node = ToolNode(all_available_tools)
 
         workflow = StateGraph(AgentState)  # ty:ignore[invalid-argument-type]
 

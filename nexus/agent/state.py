@@ -25,6 +25,8 @@ class AgentState(TypedDict):
         files_modified: NotRequired[list[str]] - Files modified.
         pending_approval: NotRequired[bool] - Pending approval flag.
         approval_granted: NotRequired[bool] - Approval granted flag.
+        current_mode: NotRequired[str] - Current operational mode.
+        mode_switch_pending: NotRequired[dict[str, str]] - Pending mode switch.
     """
 
     messages: Annotated[list[BaseMessage], add_messages]
@@ -34,6 +36,8 @@ class AgentState(TypedDict):
     files_modified: NotRequired[list[str]]
     pending_approval: NotRequired[bool]
     approval_granted: NotRequired[bool]
+    current_mode: NotRequired[str]
+    mode_switch_pending: NotRequired[dict[str, str]]
 
 
 __all__: list[str] = ["AgentState"]

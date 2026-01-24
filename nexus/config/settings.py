@@ -31,6 +31,7 @@ class Settings(BaseSettings):
         langsmith_tracing: bool - Enable LangSmith tracing.
         working_directory: Path - Working directory.
         nexus_dir: Path - Nexus configuration directory.
+        plans_directory: Path - Plans directory for ARCHITECT mode.
         max_iterations: int - Maximum iterations.
         approval_required: bool - Require approval for tool execution.
         checkpoint_db: str - Checkpoint database path.
@@ -59,6 +60,7 @@ class Settings(BaseSettings):
 
     working_directory: Path = Field(default_factory=Path.cwd)
     nexus_dir: Path = Field(default=Path(".nexus"))
+    plans_directory: Path = Field(default=Path(".nexus/plans"))
     max_iterations: int = 50
     approval_required: bool = True
 
@@ -102,6 +104,14 @@ class Settings(BaseSettings):
 
         rules_dir = self.nexus_dir / "rules"
         rules_dir.mkdir(parents=True, exist_ok=True)
+
+        if not self.plans_directory.is_absolute():
+            object.__setattr__(
+                self,
+                "plans_directory",
+                self.working_directory / self.plans_directory,
+            )
+        self.plans_directory.mkdir(parents=True, exist_ok=True)
 
         if not self.checkpoint_db.startswith(("file:", "sqlite:", "/")):
             db_path = db_dir / self.checkpoint_db

@@ -65,11 +65,12 @@ class CommandRegistry:
         return cls._commands.get(name)
 
     @classmethod
-    def execute(cls, input_str: str) -> bool:
+    async def execute(cls, input_str: str, context: dict | None = None) -> bool:
         """Execute a command string.
 
         Args:
             input_str: str - Raw input string.
+            context: dict | None - Optional execution context.
 
         Returns:
             bool - True if a command was found and executed.
@@ -90,7 +91,7 @@ class CommandRegistry:
 
         command = cls.get_command(cmd_name)
         if command:
-            command.execute(args)
+            await command.execute(args, context=context)
             return True
 
         console.print(f"[red]Unknown command: /{cmd_name}[/red]")

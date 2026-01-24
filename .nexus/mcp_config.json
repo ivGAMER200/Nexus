@@ -1,5 +1,9 @@
 {
     "mcpServers": {
+        // "desktop-commander": {
+        //     "command": "npx",
+        //     "args": ["-y", "@wonderwhy-er/desktop-commander@latest"]
+        // },
         "clear-thought": {
             "command": "node",
             "args": [
@@ -9,10 +13,6 @@
         "context7": {
             "command": "npx",
             "args": ["-y", "@upstash/context7-mcp"]
-        },
-        "desktop-commander": {
-            "command": "npx",
-            "args": ["-y", "@wonderwhy-er/desktop-commander@latest"]
         }
     }
 }

@@ -33,6 +33,11 @@ click.rich_click.STYLE_OPTION = "bold cyan"
 click.rich_click.STYLE_ARGUMENT = "bold yellow"
 click.rich_click.STYLE_COMMAND = "bold green"
 
+PANEL_WIDTH_SMALL: int = 60
+PANEL_WIDTH_MED: int = 70
+PADDING_NORMAL: tuple[int, int] = (1, 2)
+PADDING_WIDE: tuple[int, int] = (1, 4)
+
 
 def print_banner() -> None:
     """Print Nexus Banner.
@@ -58,18 +63,19 @@ def print_banner() -> None:
     banner_panel = Panel(
         Align.center(banner_text),
         border_style="cyan",
-        width=60,
-        padding=(1, 2),
+        width=PANEL_WIDTH_SMALL,
+        padding=PADDING_NORMAL,
     )
 
     console.print(Align.center(banner_panel))
 
 
-def _print_session_info(thread_id: str, *, stream: bool) -> None:
+def _print_session_info(thread_id: str, mode: str = "CODE", *, stream: bool) -> None:
     """Print Session Info.
 
     Args:
         thread_id: str - Thread ID.
+        mode: str - Current agent mode.
         stream: bool - Streaming enabled.
 
     Returns:
@@ -83,6 +89,7 @@ def _print_session_info(thread_id: str, *, stream: bool) -> None:
     session_table.add_column(style="dim", justify="right")
     session_table.add_column(style="cyan")
     session_table.add_row("Model", settings.model_name)
+    session_table.add_row("Mode", mode)
     session_table.add_row("Thread", thread_id)
     session_table.add_row("Working Dir", str(settings.working_directory))
     session_table.add_row("Streaming", "Enabled" if stream else "Disabled")
@@ -91,7 +98,7 @@ def _print_session_info(thread_id: str, *, stream: bool) -> None:
         session_table,
         title="[bold cyan]Session[/bold cyan]",
         border_style="cyan",
-        width=60,
+        width=PANEL_WIDTH_SMALL,
     )
 
     status = get_config_status()
@@ -112,7 +119,7 @@ def _print_session_info(thread_id: str, *, stream: bool) -> None:
         prompts_table,
         title=f"[bold cyan]Custom Prompts ({prompts_loaded})[/bold cyan]",
         border_style="cyan",
-        width=60,
+        width=PANEL_WIDTH_SMALL,
     )
 
     rules_table = Table(box=box.SIMPLE_HEAD, show_edge=False, padding=(0, 1), expand=True)
@@ -129,7 +136,7 @@ def _print_session_info(thread_id: str, *, stream: bool) -> None:
         rules_table,
         title=f"[bold cyan]Loaded Rules ({rules_loaded})[/bold cyan]",
         border_style="cyan",
-        width=60,
+        width=PANEL_WIDTH_SMALL,
     )
 
     console.print(Align.center(session_panel))
@@ -159,7 +166,7 @@ def _print_session_info(thread_id: str, *, stream: bool) -> None:
         mcp_table,
         title=f"[bold cyan]MCP Servers ({mcp_loaded})[/bold cyan]",
         border_style="cyan",
-        width=60,
+        width=PANEL_WIDTH_SMALL,
     )
 
     if mcp_loaded > 0:
@@ -198,8 +205,8 @@ def cli(ctx: click.Context) -> None:
             "  [cyan]nexus config[/cyan]   - Show configuration\n\n"
             "[dim]For help:[/dim] [yellow]nexus --help[/yellow]",
             border_style="cyan",
-            padding=(1, 4),
-            width=60,
+            padding=PADDING_WIDE,
+            width=PANEL_WIDTH_SMALL,
         )
         console.print(Align.center(welcome_panel))
 
@@ -249,7 +256,10 @@ async def _chat(message: str | None, thread_id: str, *, stream: bool) -> None:
                 status.stop()
                 config: dict = {"configurable": {"thread_id": thread_id}}
 
-                _print_session_info(thread_id, stream=stream)
+                state = await agent.aget_state(config)
+                current_mode = state.values.get("current_mode", "CODE") if state.values else "CODE"
+
+                _print_session_info(thread_id, mode=current_mode, stream=stream)
 
                 if message is None:
                     console.print(
@@ -259,7 +269,7 @@ async def _chat(message: str | None, thread_id: str, *, stream: bool) -> None:
                                 "Commands: [yellow]exit[/yellow], [yellow]quit[/yellow], "
                                 "[yellow]q[/yellow] to exit[/dim]",
                                 border_style="dim",
-                                width=60,
+                                width=PANEL_WIDTH_SMALL,
                             ),
                         ),
                     )
@@ -267,8 +277,13 @@ async def _chat(message: str | None, thread_id: str, *, stream: bool) -> None:
 
                     while True:
                         try:
-                            console.print(Align.center(Rule(style="dim"), width=60))
-                            message = console.input("\n[bold green]>[/bold green] ")
+                            console.print(Align.center(Rule(style="dim"), width=PANEL_WIDTH_SMALL))
+
+                            state = await agent.aget_state(config)
+                            current_mode = state.values.get("current_mode", "CODE") if state.values else "CODE"
+
+                            prompt_text = f"[[cyan]{current_mode}[/cyan]] [bold green]>[/bold green] "
+                            message = console.input(f"\n{prompt_text}")
 
                             if message.lower() in ["exit", "quit", "q"]:
                                 console.print("\n[dim]Goodbye! 👋[/dim]\n")
@@ -277,7 +292,20 @@ async def _chat(message: str | None, thread_id: str, *, stream: bool) -> None:
                             if not message.strip():
                                 continue
 
-                            if message.startswith("/") and CommandRegistry.execute(message):
+                            state = await agent.aget_state(config)
+
+                            def get_state(st=state) -> dict:
+                                return st.values if st.values else {}
+
+                            async def update_state(new_values: dict) -> None:
+                                await agent.aupdate_state(config, new_values)
+
+                            context = {
+                                "get_state": get_state,
+                                "update_state": update_state,
+                            }
+
+                            if message.startswith("/") and await CommandRegistry.execute(message, context=context):
                                 continue
 
                             await _process_message(agent, message, config, stream=stream)
@@ -354,7 +382,7 @@ async def _process_message(agent: Any, message: str, config: dict, *, stream: bo
                     title="[bold cyan]Assistant[/bold cyan]",
                     border_style="cyan",
                     padding=(1, 2),
-                    width=70,
+                    width=PANEL_WIDTH_MED,
                 ),
             ),
         )
@@ -410,7 +438,7 @@ async def _show_history(thread_id: str, limit: int) -> None:
                 Panel(
                     f"[yellow]No history found for thread '[cyan]{thread_id}[/cyan]'[/yellow]",
                     border_style="yellow",
-                    width=60,
+                    width=PANEL_WIDTH_SMALL,
                 ),
             ),
         )
@@ -423,7 +451,7 @@ async def _show_history(thread_id: str, limit: int) -> None:
                 f"[dim]Thread:[/dim] [cyan]{thread_id}[/cyan]\n"
                 f"[dim]Total Checkpoints:[/dim] [cyan]{len(checkpoints)}[/cyan]",
                 border_style="cyan",
-                width=60,
+                width=PANEL_WIDTH_SMALL,
             ),
         ),
     )
@@ -447,7 +475,7 @@ async def _show_history(thread_id: str, limit: int) -> None:
             else:
                 console.print(f"[dim]{role}:[/dim] {content[:100]}...")
 
-        console.print(Align.center(Rule(style="dim"), width=60))
+        console.print(Align.center(Rule(style="dim"), width=PANEL_WIDTH_SMALL))
         console.print()
 
 
@@ -470,6 +498,8 @@ def config() -> None:
     table.add_column("Setting", style="cyan", no_wrap=True)
     table.add_column("Value", style="white")
 
+    # Show default mode (since this is static config)
+    table.add_row("Agent Mode", "[bold cyan]CODE[/bold cyan] [dim](Default)[/dim]")
     table.add_row("Model", f"[green]{settings.model_name}[/green]")
     table.add_row("Temperature", f"[yellow]{settings.temperature}[/yellow]")
     table.add_row("Max Tokens", f"[yellow]{settings.max_tokens}[/yellow]")

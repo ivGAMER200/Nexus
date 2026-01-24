@@ -33,11 +33,12 @@ class HelpCommand:
     name = "help"
     description = "Show available slash commands"
 
-    def execute(self, args: list[str]) -> None:
+    async def execute(self, args: list[str], context: dict | None = None) -> None:
         """Execute help command.
 
         Args:
             args: list[str] - Command arguments.
+            context: dict | None - Optional execution context.
 
         Returns:
             None
@@ -68,11 +69,12 @@ class AboutCommand:
     name = "about"
     description = "Show application information"
 
-    def execute(self, args: list[str]) -> None:
+    async def execute(self, args: list[str], context: dict | None = None) -> None:
         """Execute about command.
 
         Args:
             args: list[str] - Command arguments.
+            context: dict | None - Optional execution context.
 
         Returns:
             None
@@ -116,11 +118,12 @@ class ConfigCommand:
     name = "config"
     description = "Show current configuration"
 
-    def execute(self, args: list[str]) -> None:
+    async def execute(self, args: list[str], context: dict | None = None) -> None:
         """Execute config command.
 
         Args:
             args: list[str] - Command arguments.
+            context: dict | None - Optional execution context.
 
         Returns:
             None
@@ -139,6 +142,11 @@ class ConfigCommand:
         table.add_column("Setting", style="cyan", no_wrap=True)
         table.add_column("Value", style="white")
 
+        if context and "get_state" in context:
+            state = context["get_state"]()
+            current_mode = state.get("current_mode", "CODE")
+            table.add_row("Current Mode", f"[bold cyan]{current_mode}[/bold cyan]")
+
         table.add_row("Model", f"[green]{settings.model_name}[/green]")
         table.add_row("Temperature", f"[yellow]{settings.temperature}[/yellow]")
         table.add_row("Max Tokens", f"[yellow]{settings.max_tokens}[/yellow]")
@@ -153,6 +161,7 @@ class ConfigCommand:
             "[green]Enabled[/green]" if settings.langsmith_tracing else "[red]Disabled[/red]",
         )
         table.add_row("Checkpoint DB", f"[dim]{settings.checkpoint_db}[/dim]")
+        table.add_row("Plans Directory", f"[dim]{settings.plans_directory}[/dim]")
         table.add_row("Log Level", f"[yellow]{settings.log_level}[/yellow]")
 
         console.print(table)
@@ -178,11 +187,12 @@ class MCPsCommand:
     name = "mcps"
     description = "Show active MCP servers and tool details"
 
-    def execute(self, args: list[str]) -> None:
+    async def execute(self, args: list[str], context: dict | None = None) -> None:
         """Execute mcps command.
 
         Args:
             args: list[str] - Command arguments.
+            context: dict | None - Optional execution context.
 
         Returns:
             None
@@ -237,6 +247,62 @@ class MCPsCommand:
             console.print()
 
 
+class ModeCommand:
+    """Mode Command Class.
+
+    Switches agent operational mode.
+
+    Inherits:
+        None
+
+    Attrs:
+        name: str - Command name.
+        description: str - Command description.
+
+    Methods:
+        execute(args, context): Execute mode command.
+    """
+
+    name = "mode"
+    description = "Switch agent operational mode (code, architect, ask)"
+
+    async def execute(self, args: list[str], context: dict | None = None) -> None:
+        """Execute mode command.
+
+        Args:
+            args: list[str] - Command arguments.
+            context: dict | None - Optional execution context.
+
+        Returns:
+            None
+
+        Raises:
+            None
+        """
+
+        if not args:
+            current_mode = "unknown"
+            if context and "get_state" in context:
+                state = context["get_state"]()
+                current_mode = state.get("current_mode", "CODE")
+
+            console.print(f"[yellow]Current mode:[/yellow] [bold cyan]{current_mode}[/bold cyan]")
+            console.print("[yellow]Usage:[/yellow] /mode <code|architect|ask>")
+            return
+
+        mode_name = args[0].upper()
+        if mode_name not in ["CODE", "ARCHITECT", "ASK"]:
+            console.print(f"[red]Invalid mode: {args[0]}[/red]")
+            console.print("[yellow]Available modes:[/yellow] code, architect, ask")
+            return
+
+        if context and "update_state" in context:
+            await context["update_state"]({"current_mode": mode_name})
+            console.print(f"[green]✓[/green] Switched to [bold cyan]{mode_name}[/bold cyan] mode")
+        else:
+            console.print("[red]Error: Could not update agent mode in this context.[/red]")
+
+
 def register_core_commands() -> None:
     """Register core commands.
 
@@ -254,3 +320,4 @@ def register_core_commands() -> None:
     CommandRegistry.register(AboutCommand())
     CommandRegistry.register(ConfigCommand())
     CommandRegistry.register(MCPsCommand())
+    CommandRegistry.register(ModeCommand())

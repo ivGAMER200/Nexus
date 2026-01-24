@@ -9,9 +9,10 @@ Powered by **LangChain**, **LangGraph**, and **LangSmith**, Nexus provides a per
 - 🔄 **Stateful Conversations** - Persistent conversation history with SQLite checkpointing.
 - 🔌 **Model Context Protocol (MCP)** - Connect external tools using the open standard MCP.
 - 🛠️ **Powerful Built-in Tools** - File operations, shell commands, and code analysis.
-- 👤 **Human-in-the-Loop** - Secure approval workflows for tool execution.
-- 📊 **Full Observability** - Complete tracing and debugging with LangSmith.
-- 🎨 **Beautiful CLI** - Rich terminal interface with real-time streaming and status panels.
+- 👤 **Human-in-the-Loop** - Secure approval workflows (`y/n/d`) for tool execution.
+- 🛡️ **Operational Modes** - Security-focused CODE, ARCHITECT, and ASK modes.
+- 📉 **Intelligent Guidance** - Context-aware mode switch suggestions and agent-initiated transitions.
+
 - 🚀 **Production-Ready** - Built with modern best practices, type safety, and structured logging.
 
 ## 🏗️ Architecture
@@ -106,6 +107,19 @@ Create or edit `.nexus/mcp_config.json` in your project root to define servers.
 
 Nexus automatically loads these servers, counts their tools, and injects their descriptions into the agent's system prompt so it knows exactly how to use them.
 
+## 🎭 Multi-Mode System
+
+Nexus supports three operational modes to provide structure and safety during complex tasks:
+
+| Mode | Allowed Tools | File Access | Description |
+| :--- | :--- | :--- | :--- |
+| **CODE** | All tools | Unrestricted | Full access for implementation and debugging. |
+| **ARCHITECT** | All tools | `.nexus/plans/` | Restricted mode for project planning and design. |
+| **ASK** | MCP Tools | None | Conversation-only mode for questions and research. |
+
+Nexus defaults to **CODE** mode. When a restricted action is attempted, Nexus will intelligently suggest a mode switch. The agent can also programmatically request a mode change via the `switch_mode` tool when it recognizes a shift in task requirements.
+
+
 ## 💻 Usage
 
 ### Interactive Chat
@@ -122,10 +136,11 @@ You will see a dashboard showing the active session, loaded prompts, rules, and 
 While in chat mode, you can use the following slash commands:
 
 - `/help` - Show all available commands.
-- `/config` - View current configuration settings.
+- `/mode <name>` - Switch between `code`, `architect`, and `ask`.
+- `/config` - View configuration and the active operational mode.
+
 - `/mcps` - List active MCP servers and their tools.
 - `/about` - Show application information.
-
 
 ### Command Line Mode
 
@@ -162,18 +177,23 @@ nexus config
 
 ## 🏗️ Project Structure
 
-```
+```text
 nexus/
 ├── nexus/
 │   ├── agent/          # Core agent logic
 │   │   ├── graph.py    # LangGraph definition & tool loading
-│   │   ├── nodes.py    # Agent reasoning nodes
-│   │   └── state.py    # State schema
+│   │   ├── nodes.py    # Agent reasoning & approval nodes
+│   │   ├── state.py    # State schema
+│   │   ├── modes.py    # Mode definitions & configs
+│   │   ├── restrictions.py # Tool restriction logic
+│   │   └── approval.py # Interactive approval workflow
 │   │
 │   ├── tools/          # Tool definitions
 │   │   ├── mcp.py      # MCP client & configuration handler
 │   │   ├── file_ops.py # Built-in file tools
-│   │   └── shell.py    # Built-in shell tools
+│   │   ├── shell.py    # Built-in shell tools
+│   │   └── mode.py     # Mode management tools
+
 │   │
 │   ├── config/         # Configuration
 │   │   ├── settings.py # Pydantic settings
@@ -195,7 +215,7 @@ nexus/
 ## ⚙️ Configuration Variables
 
 | Variable | Description | Default |
-|----------|-------------|---------|
+| :--- | :--- | :--- |
 | `OPENAI_API_KEY` | OpenAI API key | Required |
 | `OPENAI_BASE_URL` | OpenAI base URL | None |
 | `LANGSMITH_TRACING` | Enable tracing | true |
@@ -206,9 +226,9 @@ nexus/
 
 Contributions are welcome! Please follow the code style guidelines:
 
-1.  Use **Ruff** for linting.
-2.  Use **MyPy/Ty** for type checking.
-3.  Ensure all functions have docstrings.
+1. Use **Ruff** for linting.
+2. Use **MyPy/Ty** for type checking.
+3. Ensure all functions have docstrings.
 
 ```bash
 ruff check .
@@ -226,4 +246,4 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ---
 
-**Made with ❤️ by Rohit Vilas Ingole**
+### Made with ❤️ by Rohit Vilas Ingole

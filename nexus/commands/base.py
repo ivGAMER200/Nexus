@@ -25,11 +25,12 @@ class Command(Protocol):
     name: str
     description: str
 
-    def execute(self, args: list[str]) -> None:
+    async def execute(self, args: list[str], context: dict | None = None) -> None:
         """Execute the command.
 
         Args:
             args: list[str] - Command arguments.
+            context: dict | None - Optional execution context.
 
         Returns:
             None

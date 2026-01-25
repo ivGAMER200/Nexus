@@ -7,7 +7,7 @@
 <!-- Project Status -->
 [![Project Status: Active](https://img.shields.io/badge/Project%20Status-Active-brightgreen)](https://github.com/DataRohit/nexus)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://github.com/DataRohit/Nexus/blob/master/license)
-[![Version](https://img.shields.io/badge/version-0.1.3-blue)](#)
+[![Version](https://img.shields.io/badge/version-0.1.31-blue)](#)
 
 <!-- Core Technologies -->
 [![Python 3.14](https://img.shields.io/badge/python-3.14.2-blue.svg?logo=python&logoColor=white)](https://www.python.org/downloads/)

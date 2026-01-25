@@ -34,7 +34,7 @@ jobs:
                   TAG_NAME="${{ github.event.release.tag_name }}"
                   if [ -z "$TAG_NAME" ]; then
                       echo "No release tag found. Generating dev version."
-                      VERSION="0.1.3.dev${{ github.run_number }}"
+                      VERSION="0.1.31.dev${{ github.run_number }}"
                   else
                       echo "GitHub Release Tag: $TAG_NAME"
                       VERSION=$(echo "$TAG_NAME" | sed 's/^v//')

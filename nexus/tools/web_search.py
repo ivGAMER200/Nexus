@@ -33,7 +33,7 @@ def web_search(
         results: list[str] = []
         with DDGS() as ddgs:
             search_results = ddgs.text(
-                keywords=query,
+                query,
                 max_results=max_results,
             )
 

@@ -1,6 +1,6 @@
 [project]
 name = "agent-nexus-cli"
-version = "0.1.2"
+version = "0.1.3"
 description = "Nexus is an autonomous CLI coding agent powered by LangGraph and MCP. It plans complex tasks, persists context via SQLite, and securely orchestrates tools. Features specialized Architect/Code modes, real-time metrics, and human-in-the-loop safety for production workflows."
 readme = "readme.md"
 requires-python = ">=3.14.2"
@@ -16,6 +16,7 @@ classifiers = [
 urls = { Homepage = "https://github.com/datarohit/nexus" }
 dependencies = [
     "aiosqlite==0.22.1",
+    "ddgs==9.10.0",
     "httpx==0.28.1",
     "langchain==1.2.7",
     "langchain-community==0.4.1",

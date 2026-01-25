@@ -28,7 +28,8 @@ Powered by **LangChain**, **LangGraph**, and **LangSmith**, Nexus provides a per
 
 - 🔄 **Stateful Conversations** - Persistent conversation history with SQLite checkpointing.
 - 🔌 **Model Context Protocol (MCP)** - Connect external tools using the open standard MCP.
-- 🛠️ **Powerful Built-in Tools** - File operations, shell commands, and code analysis.
+- 🌐 **Web Search** - Real-time internet access via DuckDuckGo for up-to-date information.
+- 🛠️ **Powerful Built-in Tools** - File operations, shell commands, web search, and code analysis.
 - 👤 **Human-in-the-Loop** - Secure approval workflows (`y/n/d`) for tool execution.
 - 🛡️ **Operational Modes** - Security-focused CODE, ARCHITECT, and ASK modes.
 - 📉 **Real-time Metrics** - Track taken usage, latency, and cost per request.
@@ -45,6 +46,7 @@ Nexus is built on a robust stack:
 - **LangSmith** - Observability, tracing, and evaluation.
 - **MCP (Model Context Protocol)** - Standardized connection to external data and tools.
 - **Rich-Click** - Modern, beautiful CLI interface.
+- **DDGS** - Privacy-focused web search integration.
 - **Pydantic** - Strict configuration and validation.
 - **SQLite** - Local persistence for conversation threads.
 
@@ -220,6 +222,7 @@ nexus/
 │   │   ├── mcp.py      # MCP client & configuration handler
 │   │   ├── file_ops.py # Built-in file tools
 │   │   ├── shell.py    # Built-in shell tools
+│   │   ├── web_search.py # Web search tools
 │   │   └── mode.py     # Mode management tools
 │   │
 │   ├── config/         # Configuration

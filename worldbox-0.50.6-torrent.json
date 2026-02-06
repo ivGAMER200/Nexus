@@ -1,7 +1,8 @@
 {
-  "title": "WorldBox 0.50.6 (repack torrent)",
-  "id": "worldbox-0.50.6-torrent",
-  "source": "https://torrent‑mass.ru/simulators/2836-super-worldbox-pc-4.html",
+  "title": "WorldBox 0.50.6",
+  "id": "worldbox-0.50.6",
+  "source": "magnet:?xt=urn:btih:AC6F0C55D4A8F3FAE723B1CCED8F88296A3FCBA2&dn=WorldBox.v0.50.6.zip",
   "platform": ["windows"],
-  "version": "0.50.6"
+  "version": "0.50.6",
+  "description": "WorldBox v0.50.6 – simulador de dios. Versión verificada. Idiomas: inglés y otros."
 }
